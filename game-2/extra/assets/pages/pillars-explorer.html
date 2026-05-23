@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="cybergame-common.css">
+<style>
+  html, body { background: transparent; overflow: hidden; }
+  .container { justify-content: center; align-items: center; }
+  .branded-panel {
+    background: rgba(6, 10, 20, 0.85);
+    border: 1px solid rgba(0, 212, 255, 0.5);
+    border-radius: 8px;
+    padding: 20px 28px 18px;
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.15), inset 0 0 30px rgba(0, 212, 255, 0.03);
+    display: flex; flex-direction: column; align-items: center;
+    gap: 12px; max-width: 780px; width: 96%;
+  }
+  .title { font-size: 20px; color: #00d4ff; text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 0 10px rgba(0, 212, 255, 0.5); margin-bottom: 6px; }
+  .subtitle { font-size: 13px; color: rgba(0, 212, 255, 0.6); letter-spacing: 1px; }
+
+  /* ── Tab bar ── */
+  .tabs {
+    display: flex; gap: 8px; width: 100%; justify-content: center;
+  }
+  .tab {
+    flex: 1; max-width: 160px; display: flex; flex-direction: column;
+    align-items: center; gap: 6px; padding: 12px 8px;
+    border: 1px solid rgba(0,212,255,0.2); border-radius: 6px;
+    background: rgba(0,212,255,0.03); cursor: pointer;
+    transition: all 0.3s ease; position: relative;
+  }
+  .tab:hover { border-color: rgba(0,212,255,0.5); background: rgba(0,212,255,0.06); }
+  .tab.active {
+    border-color: #00d4ff; background: rgba(0,212,255,0.1);
+    box-shadow: 0 0 12px rgba(0,212,255,0.2);
+  }
+  .tab.active::after {
+    content: ""; position: absolute; bottom: -7px; left: 50%; transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 7px solid transparent; border-right: 7px solid transparent;
+    border-top: 7px solid #00d4ff;
+  }
+  .tab.explored { border-color: rgba(57,255,20,0.4); }
+  .tab.explored .tab-name { color: #39ff14; }
+  .tab.explored .tab-icon svg { filter: drop-shadow(0 0 4px rgba(57,255,20,0.6)); }
+  .tab.explored .tab-icon svg .icon-stroke { stroke: #39ff14; }
+  .tab.explored .tab-icon svg .icon-fill { fill: rgba(57,255,20,0.15); }
+  .tab.explored.active { border-color: #39ff14; background: rgba(57,255,20,0.08); box-shadow: 0 0 12px rgba(57,255,20,0.2); }
+  .tab.explored.active::after { border-top-color: #39ff14; }
+
+  .tab-icon { width: 36px; height: 36px; }
+  .tab-icon svg { width: 100%; height: 100%; filter: drop-shadow(0 0 4px rgba(0,212,255,0.5)); }
+  .tab-icon svg .icon-stroke { stroke: #00d4ff; fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .tab-icon svg .icon-fill { fill: rgba(0,212,255,0.1); }
+  .tab:hover .tab-icon svg { filter: drop-shadow(0 0 8px rgba(0,212,255,0.7)); }
+
+  .tab-name { font-size: 11px; color: #00d4ff; text-transform: uppercase; letter-spacing: 1px; font-weight: bold; text-align: center; line-height: 1.3; }
+
+  /* ── Content area ── */
+  .content-area {
+    width: 100%; min-height: 200px;
+    border: 1px solid rgba(0,212,255,0.15); border-radius: 6px;
+    background: rgba(0,0,0,0.2); padding: 18px 22px;
+    position: relative;
+  }
+
+  .tab-content { display: none; animation: contentFade 0.35s ease-out; }
+  .tab-content.visible { display: block; }
+
+  @keyframes contentFade {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .content-placeholder {
+    text-align: center; color: rgba(224,230,240,0.3); font-size: 14px;
+    padding: 40px 0;
+  }
+
+  .section-label {
+    font-size: 11px; color: #ffd700; font-weight: bold;
+    text-transform: uppercase; letter-spacing: 1px;
+    margin-top: 12px; margin-bottom: 4px;
+  }
+  .section-label:first-child { margin-top: 0; }
+
+  .content-def { color: #e0e6f0; font-size: 14px; line-height: 1.6; }
+  .content-example { color: rgba(224,230,240,0.65); font-size: 13px; font-style: italic; line-height: 1.5; }
+
+  .risk-box {
+    margin-top: 12px; padding: 10px 14px; border-radius: 4px;
+    background: rgba(255,51,102,0.06); border: 1px solid rgba(255,51,102,0.2);
+  }
+  .risk-title { color: #ff3366; font-size: 13px; font-weight: bold; }
+  .risk-story { color: #ff9999; font-size: 12px; line-height: 1.5; margin-top: 6px; }
+
+  /* ── Bottom bar ── */
+  .bottom-bar { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .progress-dots { display: flex; gap: 6px; }
+  .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    border: 2px solid rgba(0,212,255,0.3); transition: all 0.3s;
+  }
+  .dot.done { border-color: #39ff14; background: rgba(57,255,20,0.4); }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="branded-panel">
+    <div class="title">The Four Defence Pillars</div>
+    <div class="subtitle">Select each pillar to learn its role in Android security</div>
+
+    <div class="tabs" id="tabs">
+      <!-- Least Privilege -->
+      <div class="tab" data-idx="0" tabindex="0" role="tab">
+        <div class="tab-icon">
+          <svg viewBox="0 0 36 36">
+            <path class="icon-fill" d="M18 4 L32 12 L32 24 L18 32 L4 24 L4 12 Z"/>
+            <path class="icon-stroke" d="M18 4 L32 12 L32 24 L18 32 L4 24 L4 12 Z"/>
+            <line class="icon-stroke" x1="12" y1="18" x2="24" y2="18"/>
+            <line class="icon-stroke" x1="10" y1="14" x2="26" y2="14" opacity="0.4"/>
+            <line class="icon-stroke" x1="10" y1="22" x2="26" y2="22" opacity="0.4"/>
+            <line class="icon-stroke" x1="15" y1="14" x2="15" y2="22" opacity="0.3"/>
+            <line class="icon-stroke" x1="21" y1="14" x2="21" y2="22" opacity="0.3"/>
+          </svg>
+        </div>
+        <div class="tab-name">Least Privilege</div>
+      </div>
+
+      <!-- Secure Storage -->
+      <div class="tab" data-idx="1" tabindex="0" role="tab">
+        <div class="tab-icon">
+          <svg viewBox="0 0 36 36">
+            <rect class="icon-fill" x="6" y="14" width="24" height="18" rx="3"/>
+            <rect class="icon-stroke" x="6" y="14" width="24" height="18" rx="3"/>
+            <path class="icon-stroke" d="M12 14 V10 C12 6.7 14.7 4 18 4 C21.3 4 24 6.7 24 10 V14"/>
+            <circle class="icon-stroke" cx="18" cy="22" r="3"/>
+            <line class="icon-stroke" x1="18" y1="25" x2="18" y2="28"/>
+          </svg>
+        </div>
+        <div class="tab-name">Secure Storage</div>
+      </div>
+
+      <!-- Logging Hygiene -->
+      <div class="tab" data-idx="2" tabindex="0" role="tab">
+        <div class="tab-icon">
+          <svg viewBox="0 0 36 36">
+            <rect class="icon-fill" x="5" y="4" width="26" height="28" rx="2"/>
+            <rect class="icon-stroke" x="5" y="4" width="26" height="28" rx="2"/>
+            <line class="icon-stroke" x1="10" y1="11" x2="26" y2="11" opacity="0.5"/>
+            <line class="icon-stroke" x1="10" y1="16" x2="26" y2="16"/>
+            <line class="icon-stroke" x1="10" y1="21" x2="26" y2="21" opacity="0.5"/>
+            <line class="icon-stroke" x1="10" y1="26" x2="20" y2="26" opacity="0.3"/>
+            <line class="icon-stroke" x1="8" y1="9" x2="28" y2="27" style="stroke:#ff3366;stroke-width:2;opacity:0.7"/>
+          </svg>
+        </div>
+        <div class="tab-name">Logging Hygiene</div>
+      </div>
+
+      <!-- Controlled Exposure -->
+      <div class="tab" data-idx="3" tabindex="0" role="tab">
+        <div class="tab-icon">
+          <svg viewBox="0 0 36 36">
+            <rect class="icon-fill" x="4" y="8" width="14" height="22" rx="2"/>
+            <rect class="icon-stroke" x="4" y="8" width="14" height="22" rx="2"/>
+            <line class="icon-stroke" x1="18" y1="16" x2="24" y2="16"/>
+            <line class="icon-stroke" x1="18" y1="22" x2="24" y2="22"/>
+            <polygon class="icon-stroke" points="24,13 32,16 24,19" style="fill:rgba(0,212,255,0.15)"/>
+            <polygon class="icon-stroke" points="24,19 32,22 24,25" style="fill:rgba(0,212,255,0.15)"/>
+            <circle cx="11" cy="15" r="1.5" style="fill:#00d4ff;opacity:0.6"/>
+            <rect x="8" y="20" width="6" height="1" rx="0.5" style="fill:#00d4ff;opacity:0.4"/>
+            <rect x="8" y="23" width="4" height="1" rx="0.5" style="fill:#00d4ff;opacity:0.3"/>
+          </svg>
+        </div>
+        <div class="tab-name">Controlled Exposure</div>
+      </div>
+    </div>
+
+    <!-- Content area -->
+    <div class="content-area" id="contentArea">
+      <div class="content-placeholder" id="placeholder">Select a pillar above to explore</div>
+    </div>
+
+    <div class="bottom-bar">
+      <div class="progress-dots">
+        <div class="dot" data-idx="0"></div>
+        <div class="dot" data-idx="1"></div>
+        <div class="dot" data-idx="2"></div>
+        <div class="dot" data-idx="3"></div>
+      </div>
+      <button class="btn btn-success continue-btn" id="continueBtn" style="display:none;">Continue</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const pillars = [
+  {
+    name: "Least Privilege",
+    def: "Request only the permissions and access your app absolutely needs. Every extra permission widens the attack surface — if the app is compromised, attackers inherit everything it can do.",
+    example: "A calculator app requesting <strong>READ_CONTACTS</strong> — there's no feature that needs contacts, so this permission is unnecessary and suspicious to users.",
+    risk: "Over-permissioned app gets compromised",
+    riskStory: "A photo editor requested SMS access. When exploited, attackers silently sent premium-rate texts from users' phones, costing thousands in unauthorized charges."
+  },
+  {
+    name: "Secure Storage",
+    def: "Never store secrets or sensitive data in plain text. Use encryption and secure containers. If a device is lost, rooted, or inspected, unprotected data is immediately exposed.",
+    example: "Storing API keys in <strong>SharedPreferences</strong> instead of <strong>EncryptedSharedPreferences</strong> — anyone with device access can read them in plain text.",
+    risk: "Plain-text secrets extracted from device",
+    riskStory: "A banking app stored session tokens in plain SharedPreferences. A malicious app with root access harvested all tokens and drained accounts before users noticed."
+  },
+  {
+    name: "Logging Hygiene",
+    def: "Logs are not a vault. Never log passwords, tokens, or personal data. Treat every log line as potentially public — debug builds, crash reports, and logcat can all be accessed by other apps or testers.",
+    example: "<strong>Log.d('AUTH', 'password=' + userPassword)</strong> — this exposes credentials directly in logcat output, readable by any app with LOG_READ permission.",
+    risk: "Sensitive data leaked through debug logs",
+    riskStory: "A healthcare app logged patient emails and auth tokens during debugging. A tester's device was stolen, exposing thousands of patient records extracted from log files."
+  },
+  {
+    name: "Controlled Exposure",
+    def: "Components should not be open to other apps unless explicitly intended — and if they are, enforce authentication and validation checks on every entry point.",
+    example: "An Activity with <strong>android:exported=\"true\"</strong> that shows private user data without requiring login — any app on the device can launch it directly.",
+    risk: "Exported component exploited by malicious app",
+    riskStory: "A social app exported its ProfileActivity. Any installed app could launch it and view private user profiles without authentication, bypassing the login screen entirely."
+  }
+];
+
+const tabs = document.querySelectorAll(".tab");
+const contentArea = document.getElementById("contentArea");
+const placeholder = document.getElementById("placeholder");
+const dots = document.querySelectorAll(".dot");
+const continueBtn = document.getElementById("continueBtn");
+const explored = new Set();
+let activeIdx = -1;
+
+function selectTab(idx) {
+  // Update active tab
+  tabs.forEach(t => t.classList.remove("active"));
+  tabs[idx].classList.add("active");
+
+  // Mark explored
+  if (!explored.has(idx)) {
+    explored.add(idx);
+    tabs[idx].classList.add("explored");
+    dots[idx].classList.add("done");
+
+    if (explored.size === 4) {
+      setTimeout(() => { continueBtn.style.display = "inline-block"; continueBtn.classList.add("fade-in"); }, 400);
+    }
+  }
+
+  // Render content
+  const p = pillars[idx];
+  placeholder.style.display = "none";
+
+  // Remove old content
+  const old = contentArea.querySelector(".tab-content");
+  if (old) old.remove();
+
+  const div = document.createElement("div");
+  div.className = "tab-content visible";
+  div.innerHTML = `
+    <div class="section-label">Definition</div>
+    <div class="content-def">${p.def}</div>
+    <div class="section-label">Example</div>
+    <div class="content-example">${p.example}</div>
+    <div class="risk-box">
+      <div class="risk-title">Risk: ${p.risk}</div>
+      <div class="risk-story">${p.riskStory}</div>
+    </div>
+  `;
+
+  contentArea.appendChild(div);
+  activeIdx = idx;
+}
+
+tabs.forEach((tab, i) => {
+  tab.addEventListener("click", () => selectTab(i));
+  tab.addEventListener("keydown", e => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectTab(i); }
+    if (e.key === "ArrowRight" && i < 3) { tabs[i+1].focus(); selectTab(i+1); }
+    if (e.key === "ArrowLeft" && i > 0) { tabs[i-1].focus(); selectTab(i-1); }
+  });
+});
+
+continueBtn.addEventListener("click", () => {
+  try { window.parent.postMessage({ type: "renjs-event", id: "pillars-complete" }, "*"); } catch(e) {}
+});
+
+window.addEventListener("load", () => window.focus());
+</script>
+</body>
+</html>

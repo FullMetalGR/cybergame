@@ -1,0 +1,134 @@
+name: Unknown
+resolution:
+  - 0
+  - 0
+assetCounter: 44
+config:
+  hud:
+    - id: default
+      type: messageBox
+      asset: asset_message_box_background
+      x: 140 
+      y: 590
+      sfx: none
+      text:
+        x: 32
+        y: 24
+        style:
+          font: font_anonymous_pro
+          fontSize: 32px
+          fill: '#d1f7ff'
+          align: left
+          wordWrap: true
+          wordWrapWidth: '936'
+      ctc:
+        x: 950
+        y: 150
+        asset: asset_message_box_ctc
+    - id: default
+      type: nameBox
+      asset: asset_name_box_background
+      x: 100
+      y: 545
+      text:
+        x: 0
+        y: 0
+        style:
+          font: font_anonymous_pro
+          fontSize: 32px
+          fill: '#01012b'
+          align: left
+          boundsAlignH: center
+          boundsAlignV: middle
+    - id: default
+      type: choices
+      asset: choice_background
+      x: 140
+      y: 300
+      alignment: centered
+      separation: 10
+      sfx: none
+      chosenColor: '#535050'
+      text:
+        x: 0
+        y: 0
+        style:
+          font: font_anonymous_pro
+          fontSize: 32px
+          fill: '#FFFFFF'
+          align: left
+          boundsAlignH: center
+          boundsAlignV: middle
+
+  menus:
+    main:
+      - type: image
+        x: 0
+        y: 0
+        asset: loader_background
+      #- type: music
+      #  asset: no_music
+      - type: button
+        x: 1000
+        y: 650
+        asset: button_start
+        binding: start
+
+assets:
+  images:
+    loader_background:
+      name: loader_background
+      fileName: loader/background.png
+    asset_message_box_background:
+      name: asset_message_box_background
+      fileName: general/message_box_background.png
+    asset_name_box_background:
+      name: asset_name_box_background.png
+      fileName: general/name_box_background.png
+
+  spritesheets:
+    loader_loading_bar:
+      name: loader_loading_bar
+      fileName: loader/loading-bar.png
+      w: 578
+      h: 82
+    asset_message_box_ctc:
+      name: asset_message_box_ctc
+      fileName: general/ctc.png
+      w: 20
+      h: 20
+    button_start:
+      name: button_start
+      fileName: buttons/start.png
+      w: 220
+      h: 82
+    button_enter:
+      name: button_enter
+      fileName: buttons/enter.png
+      w: 220
+      h: 82
+    button_confirm:
+      name: button_confirm
+      fileName: buttons/confirm.png
+      w: 220
+      h: 82
+    choice_background:
+      name: choice_background
+      fileName: general/choice_background.png
+      w: 1000
+      h: 65
+
+  fonts:
+    font_anonymous_pro:
+      name: font_anonymous_pro
+    font_majormonodisplay:
+      name: font_majormonodisplay
+
+  audio:
+    no_music:
+      #fileName: no_sound.mp3
+      name: no_music
+      type: music
+
+GUIVersion: "2.0"
+assetsPath: assets/gui/

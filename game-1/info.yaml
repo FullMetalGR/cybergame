@@ -1,0 +1,5 @@
+module:
+  name: "Boot Sequence: Android Foundations"
+  id: com.ctflib.cybergame.story-1-android-foundations
+  version: v1
+  organisation: com.ctflib.cybergame

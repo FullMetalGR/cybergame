@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Intent Communications Simulator</title>
+  <link rel="stylesheet" href="cybergame-common.css">
+  <style>
+    html, body {
+      background: transparent;
+      overflow: hidden;
+    }
+
+    .sim-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      padding: 0;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .sim-panel {
+      background: rgba(6, 10, 20, 0.85);
+      border: 1px solid rgba(0, 212, 255, 0.5);
+      border-radius: 8px;
+      padding: 18px 30px 20px;
+      box-shadow: 0 0 20px rgba(0, 212, 255, 0.15), inset 0 0 30px rgba(0, 212, 255, 0.03);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 95%;
+      max-width: 960px;
+      max-height: 98%;
+      overflow: hidden;
+    }
+
+    .sim-title {
+      font-size: 16px;
+      color: #e0e6f0;
+      text-align: center;
+      margin-bottom: 4px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .sim-subtitle {
+      font-size: 12px;
+      color: #607080;
+      text-align: center;
+      margin-bottom: 12px;
+      letter-spacing: 1px;
+    }
+
+    /* ── Canvas area ── */
+    .canvas-area {
+      position: relative;
+      width: 880px;
+      max-width: 100%;
+      height: 400px;
+      margin: 0 auto 10px;
+      overflow: visible;
+    }
+
+    /* ── App nodes ── */
+    .app-node {
+      position: absolute;
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 40% 35%, #0d3d5c, #0a1a2a);
+      border: 2px solid #00d4ff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      z-index: 2;
+      transition: box-shadow 0.4s ease, border-color 0.4s ease;
+      box-shadow: 0 0 12px rgba(0, 212, 255, 0.4);
+    }
+
+    .app-node .node-icon {
+      font-size: 22px;
+      color: #00d4ff;
+      text-shadow: 0 0 8px rgba(0, 212, 255, 0.8);
+      line-height: 1;
+      pointer-events: none;
+    }
+
+    .app-node .node-label {
+      position: absolute;
+      bottom: -22px;
+      white-space: nowrap;
+      font-size: 11px;
+      color: #00d4ff;
+      letter-spacing: 1px;
+      pointer-events: none;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+    }
+
+    /* App A: left-center */
+    #appA { left: 195px; top: 165px; }
+
+    /* App B: upper-right area (explicit target) */
+    #appB { left: 480px; top: 80px; }
+
+    /* ── Small receiver nodes ── */
+    .app-node.small {
+      width: 44px;
+      height: 44px;
+      border-color: rgba(0, 212, 255, 0.35);
+      opacity: 0.5;
+      transition: opacity 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
+      box-shadow: none;
+    }
+
+    .app-node.small .node-icon {
+      font-size: 14px;
+      color: rgba(0, 212, 255, 0.6);
+      text-shadow: none;
+    }
+
+    .app-node.small .node-label {
+      font-size: 9px;
+      color: rgba(0, 212, 255, 0.5);
+      bottom: -18px;
+    }
+
+    .app-node.small.lit {
+      opacity: 1;
+      border-color: #39ff14;
+      box-shadow: 0 0 10px rgba(57, 255, 20, 0.5);
+    }
+
+    .app-node.small.lit .node-icon {
+      color: #39ff14;
+      text-shadow: 0 0 6px rgba(57, 255, 20, 0.7);
+    }
+
+    /* Receiver positions - fanned on the right side */
+    #recv1 { left: 620px; top: 30px; }
+    #recv2 { left: 720px; top: 115px; }
+    #recv3 { left: 750px; top: 210px; }
+    #recv4 { left: 700px; top: 300px; }
+    #recv5 { left: 620px; top: 345px; }
+
+    /* ── Antenna trigger buttons ── */
+    .antenna-btn {
+      position: absolute;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #0a2a3a, #0d3d5c);
+      border: 2px solid #00d4ff;
+      color: #00d4ff;
+      font-size: 22px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 5;
+      transition: all 0.3s ease;
+      outline: none;
+    }
+
+    .antenna-btn:hover:not(.activated),
+    .antenna-btn:focus:not(.activated) {
+      box-shadow: 0 0 20px rgba(0, 212, 255, 0.7), 0 0 40px rgba(0, 212, 255, 0.3);
+      transform: scale(1.08);
+    }
+
+    .antenna-btn .antenna-label {
+      position: absolute;
+      bottom: -22px;
+      white-space: nowrap;
+      font-size: 10px;
+      color: #00d4ff;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      pointer-events: none;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+    }
+
+    .antenna-btn.activated {
+      border-color: #39ff14;
+      color: #39ff14;
+      cursor: default;
+      box-shadow: 0 0 12px rgba(57, 255, 20, 0.5);
+    }
+
+    /* Explicit button: upper-left */
+    #explicitBtn { left: 50px; top: 120px; }
+
+    /* Implicit button: lower-left */
+    #implicitBtn { left: 50px; top: 260px; }
+
+    /* ── Beam SVG overlay ── */
+    .beam-layer {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 3;
+      overflow: visible;
+    }
+
+    /* Explicit beam: direct line A to B */
+    @keyframes beamDirect {
+      0%   { stroke-dashoffset: 400; opacity: 0.3; }
+      60%  { stroke-dashoffset: 0; opacity: 1; }
+      100% { stroke-dashoffset: 0; opacity: 1; }
+    }
+
+    .beam-direct {
+      stroke: #39ff14;
+      stroke-width: 3;
+      stroke-dasharray: 400;
+      stroke-dashoffset: 400;
+      filter: drop-shadow(0 0 6px rgba(57, 255, 20, 0.8));
+      animation: beamDirect 0.8s ease-out forwards;
+    }
+
+    .beam-direct-glow {
+      stroke: rgba(57, 255, 20, 0.3);
+      stroke-width: 8;
+      stroke-dasharray: 400;
+      stroke-dashoffset: 400;
+      animation: beamDirect 0.8s ease-out forwards;
+    }
+
+    /* Implicit beams: fan lines */
+    @keyframes beamFan {
+      0%   { stroke-dashoffset: 600; opacity: 0; }
+      30%  { opacity: 0.6; }
+      70%  { stroke-dashoffset: 0; opacity: 1; }
+      100% { stroke-dashoffset: 0; opacity: 0.8; }
+    }
+
+    .beam-fan {
+      stroke: #00d4ff;
+      stroke-width: 2;
+      stroke-dasharray: 600;
+      stroke-dashoffset: 600;
+      filter: drop-shadow(0 0 4px rgba(0, 212, 255, 0.6));
+    }
+
+    .beam-fan-glow {
+      stroke: rgba(0, 212, 255, 0.2);
+      stroke-width: 6;
+      stroke-dasharray: 600;
+      stroke-dashoffset: 600;
+    }
+
+    /* Broadcast ring from App A */
+    @keyframes broadcastRing {
+      0%   { r: 36; opacity: 0.8; stroke-width: 3; }
+      100% { r: 200; opacity: 0; stroke-width: 1; }
+    }
+
+    .broadcast-ring {
+      fill: none;
+      stroke: #00d4ff;
+      animation: broadcastRing 1s ease-out forwards;
+    }
+
+    /* ── Beam label ── */
+    .beam-label {
+      position: absolute;
+      background: rgba(10, 14, 26, 0.92);
+      border: 1px solid #39ff14;
+      border-radius: 4px;
+      padding: 6px 14px;
+      font-size: 12px;
+      color: #39ff14;
+      white-space: nowrap;
+      z-index: 10;
+      pointer-events: none;
+      text-shadow: 0 0 6px rgba(57, 255, 20, 0.5);
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Chooser popup ── */
+    .chooser-overlay {
+      position: absolute;
+      right: 30px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(10, 14, 26, 0.95);
+      border: 1px solid #00d4ff;
+      border-radius: 8px;
+      padding: 14px 16px;
+      z-index: 20;
+      box-shadow: 0 0 30px rgba(0, 212, 255, 0.4), 0 4px 20px rgba(0, 0, 0, 0.6);
+      min-width: 170px;
+    }
+
+    .chooser-overlay .chooser-title {
+      font-size: 11px;
+      color: #607080;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 10px;
+      border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+      padding-bottom: 6px;
+    }
+
+    .chooser-overlay .chooser-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      margin: 3px 0;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #e0e6f0;
+      background: rgba(0, 212, 255, 0.05);
+      border: 1px solid rgba(0, 212, 255, 0.15);
+      cursor: default;
+    }
+
+    .chooser-option .opt-icon {
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    /* ── Status bar ── */
+    .status-bar {
+      font-size: 13px;
+      color: #c0c8d8;
+      letter-spacing: 1px;
+      text-align: center;
+      margin-bottom: 8px;
+      min-height: 20px;
+      background: rgba(10, 14, 26, 0.7);
+      border: 1px solid rgba(0, 212, 255, 0.25);
+      border-radius: 4px;
+      padding: 6px 24px;
+    }
+
+    .status-bar.complete {
+      color: #39ff14;
+      text-shadow: 0 0 8px rgba(57, 255, 20, 0.5);
+      border-color: rgba(57, 255, 20, 0.4);
+    }
+
+    .status-bar .checkmark {
+      color: #39ff14;
+      margin-right: 4px;
+    }
+
+    .status-bar .pending {
+      color: #607080;
+      margin-right: 4px;
+    }
+
+    /* ── Continue button ── */
+    #continueBtn {
+      margin-top: 4px;
+    }
+
+    /* ── Lock-on glow on App B ── */
+    .app-node.locked-on {
+      border-color: #39ff14;
+      box-shadow: 0 0 20px rgba(57, 255, 20, 0.7), 0 0 40px rgba(57, 255, 20, 0.3);
+    }
+
+    .app-node.locked-on .node-icon {
+      color: #39ff14;
+      text-shadow: 0 0 10px rgba(57, 255, 20, 0.8);
+    }
+
+    /* ── Broadcast pulse on App A ── */
+    @keyframes pulseAppA {
+      0%, 100% { box-shadow: 0 0 12px rgba(0, 212, 255, 0.4); }
+      50% { box-shadow: 0 0 28px rgba(0, 212, 255, 0.9), 0 0 50px rgba(0, 212, 255, 0.3); }
+    }
+
+    .app-node.broadcasting {
+      animation: pulseAppA 0.6s ease-in-out 2;
+    }
+
+    /* ── Completion flash ── */
+    @keyframes completionFlash {
+      0% { opacity: 0; }
+      20% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    .completion-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: radial-gradient(circle, rgba(57, 255, 20, 0.15), transparent 70%);
+      pointer-events: none;
+      animation: completionFlash 1.2s ease-out forwards;
+      z-index: 998;
+    }
+  </style>
+</head>
+<body>
+  <div class="sim-container">
+    <div class="sim-panel">
+      <h2 class="sim-title">Intent Communications Simulator</h2>
+      <p class="sim-subtitle">Click each antenna to observe Explicit vs Implicit intent behavior</p>
+
+      <!-- Canvas area with nodes and beams -->
+      <div class="canvas-area" id="canvasArea" role="group" aria-label="Intent communication visualization">
+
+        <!-- SVG beam layer -->
+        <svg class="beam-layer" id="beamSvg" aria-hidden="true"></svg>
+
+        <!-- Explicit antenna button (upper-left) -->
+        <button class="antenna-btn pulse" id="explicitBtn" tabindex="0"
+          aria-label="Explicit Intent - click to send a direct targeted communication from App A to App B">
+          <span aria-hidden="true">&#8982;</span>
+          <span class="antenna-label">Explicit</span>
+        </button>
+
+        <!-- Implicit antenna button (lower-left) -->
+        <button class="antenna-btn pulse" id="implicitBtn" tabindex="0"
+          aria-label="Implicit Intent - click to broadcast a general request from App A to all capable apps">
+          <span aria-hidden="true">&#127760;</span>
+          <span class="antenna-label">Implicit</span>
+        </button>
+
+        <!-- App A: source application -->
+        <div class="app-node" id="appA" aria-label="App A - source application">
+          <span class="node-icon">&#9041;</span>
+          <span class="node-label">App A</span>
+        </div>
+
+        <!-- App B: explicit target -->
+        <div class="app-node" id="appB" aria-label="App B - target application">
+          <span class="node-icon">&#9041;</span>
+          <span class="node-label">App B</span>
+        </div>
+
+        <!-- Small receiver app nodes (fan pattern, right side) -->
+        <div class="app-node small" id="recv1" aria-label="Gallery app">
+          <span class="node-icon">&#9638;</span>
+          <span class="node-label">Gallery</span>
+        </div>
+        <div class="app-node small" id="recv2" aria-label="Browser app">
+          <span class="node-icon">&#9638;</span>
+          <span class="node-label">Browser</span>
+        </div>
+        <div class="app-node small" id="recv3" aria-label="Maps app">
+          <span class="node-icon">&#9638;</span>
+          <span class="node-label">Maps</span>
+        </div>
+        <div class="app-node small" id="recv4" aria-label="Share app">
+          <span class="node-icon">&#9638;</span>
+          <span class="node-label">Share</span>
+        </div>
+        <div class="app-node small" id="recv5" aria-label="Contacts app">
+          <span class="node-icon">&#9638;</span>
+          <span class="node-label">Contacts</span>
+        </div>
+      </div>
+
+      <!-- Status bar -->
+      <div class="status-bar" id="statusBar" aria-live="polite">
+        <span class="pending" id="explicitCheck">&#9633;</span> Explicit
+        &nbsp;&nbsp;
+        <span class="pending" id="implicitCheck">&#9633;</span> Implicit
+      </div>
+
+      <!-- Continue button -->
+      <button class="btn" id="continueBtn" disabled
+        aria-label="Continue to next section - complete both interactions first" tabindex="0">
+        Continue
+      </button>
+    </div>
+  </div>
+
+  <script>
+    /* ===== Messaging API ===== */
+    const Events={handlers:{},init(){window.addEventListener("message",e=>{if(e.origin!==window.location.origin)return;if(e.data.type!=="renjs-event")return;const{id,args,scope}=e.data;(this.handlers[id]||[]).forEach(fn=>fn.apply(scope,args))})},on(id,fn){this.handlers[id]=this.handlers[id]||[];this.handlers[id].push(fn);this.init()}};
+    const Game={Events,onMessage(id,fn){Events.on(id,fn)},sendMessage(id,args=[],scope={}){window.parent.postMessage({type:"renjs-event",id,args,scope},window.location.origin)}};
+
+    /* ===== DOM refs ===== */
+    const canvasArea = document.getElementById("canvasArea");
+    const beamSvg = document.getElementById("beamSvg");
+    const explicitBtn = document.getElementById("explicitBtn");
+    const implicitBtn = document.getElementById("implicitBtn");
+    const continueBtn = document.getElementById("continueBtn");
+    const explicitCheck = document.getElementById("explicitCheck");
+    const implicitCheck = document.getElementById("implicitCheck");
+    const statusBar = document.getElementById("statusBar");
+
+    const appA = document.getElementById("appA");
+    const appB = document.getElementById("appB");
+    const receivers = [
+      document.getElementById("recv1"),
+      document.getElementById("recv2"),
+      document.getElementById("recv3"),
+      document.getElementById("recv4"),
+      document.getElementById("recv5"),
+    ];
+
+    let explicitDone = false;
+    let implicitDone = false;
+
+    /* ── Helper: get center coords relative to canvas ── */
+    function centerOf(el) {
+      const cRect = canvasArea.getBoundingClientRect();
+      const eRect = el.getBoundingClientRect();
+      return {
+        x: eRect.left + eRect.width / 2 - cRect.left,
+        y: eRect.top + eRect.height / 2 - cRect.top,
+      };
+    }
+
+    /* ── Explicit Intent: direct beam A → B ── */
+    function fireExplicit() {
+      if (explicitDone) return;
+      explicitDone = true;
+
+      explicitBtn.classList.remove("pulse");
+      explicitBtn.classList.add("activated");
+
+      const a = centerOf(appA);
+      const b = centerOf(appB);
+
+      // Glow line
+      const glowLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      glowLine.setAttribute("x1", a.x); glowLine.setAttribute("y1", a.y);
+      glowLine.setAttribute("x2", b.x); glowLine.setAttribute("y2", b.y);
+      glowLine.classList.add("beam-direct-glow");
+      beamSvg.appendChild(glowLine);
+
+      // Main beam
+      const beamLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      beamLine.setAttribute("x1", a.x); beamLine.setAttribute("y1", a.y);
+      beamLine.setAttribute("x2", b.x); beamLine.setAttribute("y2", b.y);
+      beamLine.classList.add("beam-direct");
+      beamSvg.appendChild(beamLine);
+
+      // Lock-on glow on App B
+      setTimeout(() => { appB.classList.add("locked-on"); }, 600);
+
+      // Show label at midpoint of beam
+      setTimeout(() => {
+        const label = document.createElement("div");
+        label.className = "beam-label fade-in";
+        label.textContent = "Direct call: open ProfileActivity in App B";
+        const midX = (a.x + b.x) / 2;
+        const midY = Math.min(a.y, b.y) - 10;
+        label.style.left = midX + "px";
+        label.style.top = midY + "px";
+        label.style.transform = "translate(-50%, -100%)";
+        canvasArea.appendChild(label);
+      }, 700);
+
+      // Update status
+      explicitCheck.textContent = "\u2611";
+      explicitCheck.className = "checkmark";
+      checkCompletion();
+    }
+
+    /* ── Implicit Intent: broadcast fan A → receivers ── */
+    function fireImplicit() {
+      if (implicitDone) return;
+      implicitDone = true;
+
+      implicitBtn.classList.remove("pulse");
+      implicitBtn.classList.add("activated");
+
+      const a = centerOf(appA);
+
+      // Broadcast ring
+      appA.classList.add("broadcasting");
+      const ring = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      ring.setAttribute("cx", a.x);
+      ring.setAttribute("cy", a.y);
+      ring.setAttribute("r", "36");
+      ring.classList.add("broadcast-ring");
+      beamSvg.appendChild(ring);
+      setTimeout(() => ring.remove(), 1100);
+
+      // Fan beams to each receiver
+      receivers.forEach((recv, i) => {
+        const delay = 200 + i * 120;
+        setTimeout(() => {
+          const r = centerOf(recv);
+
+          const glow = document.createElementNS("http://www.w3.org/2000/svg", "line");
+          glow.setAttribute("x1", a.x); glow.setAttribute("y1", a.y);
+          glow.setAttribute("x2", r.x); glow.setAttribute("y2", r.y);
+          glow.classList.add("beam-fan-glow");
+          glow.style.animation = `beamFan 0.6s ${i * 0.08}s ease-out forwards`;
+          beamSvg.appendChild(glow);
+
+          const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+          line.setAttribute("x1", a.x); line.setAttribute("y1", a.y);
+          line.setAttribute("x2", r.x); line.setAttribute("y2", r.y);
+          line.classList.add("beam-fan");
+          line.style.animation = `beamFan 0.6s ${i * 0.08}s ease-out forwards`;
+          beamSvg.appendChild(line);
+
+          recv.classList.add("lit");
+        }, delay);
+      });
+
+      // Show chooser popup
+      setTimeout(() => { showChooserPopup(); }, 900);
+
+      // Update status
+      implicitCheck.textContent = "\u2611";
+      implicitCheck.className = "checkmark";
+      checkCompletion();
+    }
+
+    /* ── Chooser popup ── */
+    function showChooserPopup() {
+      const popup = document.createElement("div");
+      popup.className = "chooser-overlay fade-in";
+      popup.setAttribute("role", "dialog");
+      popup.setAttribute("aria-label", "App chooser - the system shows which apps can handle this implicit intent");
+
+      popup.innerHTML = `
+        <div class="chooser-title">Open with&hellip;</div>
+        <div class="chooser-option"><span class="opt-icon">&#128247;</span> Gallery</div>
+        <div class="chooser-option"><span class="opt-icon">&#127760;</span> Browser</div>
+        <div class="chooser-option"><span class="opt-icon">&#128205;</span> Maps</div>
+        <div class="chooser-option"><span class="opt-icon">&#128228;</span> Share</div>
+        <div class="chooser-option"><span class="opt-icon">&#128100;</span> Contacts</div>
+      `;
+
+      canvasArea.appendChild(popup);
+    }
+
+    /* ── Completion gating ── */
+    function checkCompletion() {
+      if (explicitDone && implicitDone) {
+        statusBar.classList.add("complete");
+        continueBtn.disabled = false;
+        continueBtn.classList.add("btn-success", "pulse");
+        continueBtn.setAttribute("aria-label", "Continue to next section");
+      }
+    }
+
+    /* ── Continue handler ── */
+    function onContinue() {
+      if (!explicitDone || !implicitDone) return;
+      continueBtn.disabled = true;
+      continueBtn.classList.remove("pulse");
+
+      const overlay = document.createElement("div");
+      overlay.className = "completion-overlay";
+      overlay.setAttribute("aria-hidden", "true");
+      document.body.appendChild(overlay);
+      setTimeout(() => overlay.remove(), 1300);
+
+      setTimeout(() => {
+        Game.sendMessage("intent-sim-complete");
+      }, 600);
+    }
+
+    /* ── Event listeners ── */
+    explicitBtn.addEventListener("click", fireExplicit);
+    implicitBtn.addEventListener("click", fireImplicit);
+    continueBtn.addEventListener("click", onContinue);
+
+    [explicitBtn, implicitBtn, continueBtn].forEach(btn => {
+      btn.addEventListener("keydown", (e) => {
+        if (e.code === "Enter" || e.code === "Space") {
+          e.preventDefault();
+          btn.click();
+        }
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Intent Router - Cybergame</title>
+  <link rel="stylesheet" href="cybergame-common.css">
+  <style>
+    /* Override common background for iframe transparency */
+    html, body {
+      background: transparent;
+      overflow: hidden;
+    }
+
+    /* Centering wrapper */
+    .page-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    /* Dark panel with neon border wrapping all content */
+    .container {
+      background: rgba(6, 10, 20, 0.85);
+      border: 1px solid rgba(0, 212, 255, 0.5);
+      border-radius: 8px;
+      padding: 24px 40px;
+      box-shadow: 0 0 20px rgba(0, 212, 255, 0.15), inset 0 0 30px rgba(0, 212, 255, 0.03);
+      overflow-y: auto;
+      overflow-x: hidden;
+      max-width: 640px;
+      max-height: 96%;
+    }
+
+    /* Task panel transitions */
+    .task-panel {
+      width: 100%;
+      max-width: 560px;
+      text-align: center;
+      overflow: hidden;
+      transition: max-height 0.5s ease, opacity 0.4s ease, margin 0.5s ease, padding 0.5s ease;
+    }
+
+    /* Collapse task 1 when done */
+    .task-panel.collapsed {
+      max-height: 0 !important;
+      opacity: 0;
+      margin: 0;
+      padding: 0;
+      pointer-events: none;
+    }
+
+    #task2 {
+      display: none;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    #task2.active {
+      display: block;
+      opacity: 1;
+    }
+
+    /* Task header */
+    .task-header {
+      font-size: 17px;
+      color: #00d4ff;
+      text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+      margin-bottom: 20px;
+      letter-spacing: 0.5px;
+    }
+
+    /* Info row for target/action display */
+    .info-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .info-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0, 212, 255, 0.08);
+      border: 1px solid rgba(0, 212, 255, 0.3);
+      border-radius: 6px;
+      padding: 8px 16px;
+      font-size: 14px;
+      color: #e0e6f0;
+    }
+
+    .info-badge .label {
+      color: #607080;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-size: 11px;
+    }
+
+    /* Toggle indicator (read-only) */
+    .toggle-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .toggle-track {
+      width: 36px;
+      height: 20px;
+      border-radius: 10px;
+      position: relative;
+      transition: background 0.3s ease;
+    }
+
+    .toggle-track.on {
+      background: rgba(57, 255, 20, 0.3);
+      border: 1px solid #39ff14;
+    }
+
+    .toggle-track.off {
+      background: rgba(255, 51, 102, 0.2);
+      border: 1px solid #ff3366;
+    }
+
+    .toggle-thumb {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      position: absolute;
+      top: 2px;
+      transition: left 0.3s ease, background 0.3s ease;
+    }
+
+    .toggle-track.on .toggle-thumb {
+      left: 19px;
+      background: #39ff14;
+    }
+
+    .toggle-track.off .toggle-thumb {
+      left: 2px;
+      background: #ff3366;
+    }
+
+    .toggle-label {
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    .toggle-label.yes {
+      color: #39ff14;
+    }
+
+    .toggle-label.no {
+      color: #ff3366;
+    }
+
+    /* Choice buttons row */
+    .choice-row {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      margin: 24px 0 16px;
+    }
+
+    .choice-row .btn {
+      min-width: 180px;
+    }
+
+    .choice-row .btn.correct-chosen {
+      border-color: #39ff14;
+      color: #39ff14;
+      background: rgba(57, 255, 20, 0.1);
+      box-shadow: 0 0 15px rgba(57, 255, 20, 0.4);
+    }
+
+    .choice-row .btn.wrong-chosen {
+      border-color: #ff3366;
+      color: #ff3366;
+      background: rgba(255, 51, 102, 0.1);
+      box-shadow: 0 0 15px rgba(255, 51, 102, 0.4);
+    }
+
+    /* Animation canvas area - collapsed until activated */
+    .anim-area {
+      position: relative;
+      width: 100%;
+      height: 0;
+      margin: 0;
+      overflow: hidden;
+      transition: height 0.4s ease, margin 0.4s ease;
+    }
+
+    .anim-area.active {
+      height: 120px;
+      margin: 16px 0;
+    }
+
+    /* App icon boxes for animations */
+    .app-box {
+      position: absolute;
+      width: 56px;
+      height: 56px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      font-weight: bold;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+
+    .app-box.visible {
+      opacity: 1;
+    }
+
+    .app-a {
+      background: linear-gradient(135deg, #0d3d5c, #0a2a3a);
+      border: 2px solid #00d4ff;
+      color: #00d4ff;
+      top: 32px;
+      left: 60px;
+    }
+
+    .app-b {
+      background: linear-gradient(135deg, #0d4a0d, #0a2a0a);
+      border: 2px solid #39ff14;
+      color: #39ff14;
+      top: 32px;
+      right: 60px;
+    }
+
+    /* Multiple receiver apps for implicit intent */
+    .app-r1 {
+      background: linear-gradient(135deg, #3d0d3d, #2a0a2a);
+      border: 2px solid #cc66ff;
+      color: #cc66ff;
+      top: 8px;
+      right: 100px;
+    }
+
+    .app-r2 {
+      background: linear-gradient(135deg, #3d3d0d, #2a2a0a);
+      border: 2px solid #ffd700;
+      color: #ffd700;
+      top: 56px;
+      right: 40px;
+    }
+
+    .app-r3 {
+      background: linear-gradient(135deg, #0d3d3d, #0a2a2a);
+      border: 2px solid #00ffcc;
+      color: #00ffcc;
+      top: 56px;
+      right: 140px;
+    }
+
+    /* Route arrow SVG */
+    .route-svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .route-svg line,
+    .route-svg path {
+      stroke-width: 2;
+      fill: none;
+    }
+
+    /* Arrow animation */
+    @keyframes drawLine {
+      from { stroke-dashoffset: 300; }
+      to { stroke-dashoffset: 0; }
+    }
+
+    .route-line-animated {
+      stroke-dasharray: 300;
+      stroke-dashoffset: 300;
+      animation: drawLine 0.8s ease forwards;
+    }
+
+    /* Broadcast pulse */
+    @keyframes broadcastPulse {
+      0% { r: 8; opacity: 0.9; }
+      100% { r: 60; opacity: 0; }
+    }
+
+    .broadcast-ring {
+      fill: none;
+      stroke: #00d4ff;
+      stroke-width: 2;
+      opacity: 0;
+    }
+
+    .broadcast-ring.animate {
+      animation: broadcastPulse 1s ease-out forwards;
+    }
+
+    .broadcast-ring.animate.delay1 {
+      animation-delay: 0.2s;
+    }
+
+    .broadcast-ring.animate.delay2 {
+      animation-delay: 0.4s;
+    }
+
+    /* Hint area - invisible by default, styled when content is injected */
+    .hint-area {
+      margin-top: 0;
+      min-height: 0;
+      background: transparent;
+      border: none;
+      border-radius: 6px;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .hint-area.has-content {
+      margin-top: 8px;
+      min-height: 44px;
+      background: rgba(255, 215, 0, 0.05);
+      border: 1px solid rgba(255, 215, 0, 0.15);
+      padding: 6px 10px;
+    }
+
+    /* Divider between tasks */
+    .task-divider {
+      width: 80%;
+      max-width: 400px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.3), transparent);
+      margin: 20px auto;
+    }
+
+    /* Task completion check */
+    .task-check {
+      display: inline-block;
+      font-size: 18px;
+      color: #39ff14;
+      text-shadow: 0 0 8px rgba(57, 255, 20, 0.6);
+      margin-left: 8px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .task-check.visible {
+      opacity: 1;
+    }
+
+    /* Completion flash */
+    @keyframes completionFlash {
+      0% { opacity: 0; }
+      20% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    .completion-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: radial-gradient(circle, rgba(57, 255, 20, 0.15), transparent 70%);
+      pointer-events: none;
+      animation: completionFlash 1.2s ease-out forwards;
+      z-index: 998;
+    }
+
+    /* Status progress */
+    .progress-bar {
+      margin-top: 16px;
+      font-size: 13px;
+      color: #607080;
+      letter-spacing: 1px;
+      background: rgba(0, 212, 255, 0.06);
+      border: 1px solid rgba(0, 212, 255, 0.2);
+      border-radius: 4px;
+      padding: 6px 14px;
+      overflow: hidden;
+    }
+
+    .progress-bar .done {
+      color: #39ff14;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page-wrapper">
+  <div class="container">
+
+    <!-- Task 1: Explicit Intent -->
+    <div class="task-panel" id="task1" role="region" aria-label="Task 1: Routing scenario">
+      <h2 class="task-header">
+        Open a specific screen in the same app
+        <span class="task-check" id="task1Check" aria-label="Task 1 complete">&#10003;</span>
+      </h2>
+
+      <div class="info-row">
+        <div class="info-badge" aria-label="Target known: Yes">
+          <span class="label">Target known?</span>
+          <span class="toggle-indicator">
+            <span class="toggle-track on" aria-hidden="true">
+              <span class="toggle-thumb"></span>
+            </span>
+            <span class="toggle-label yes">Yes</span>
+          </span>
+        </div>
+        <div class="info-badge" aria-label="Action: Open Screen">
+          <span class="label">Action</span>
+          <span>Open Screen</span>
+        </div>
+      </div>
+
+      <div class="choice-row" id="task1Choices" role="group" aria-label="Choose the correct intent type">
+        <button
+          class="btn"
+          id="t1Explicit"
+          data-answer="correct"
+          aria-label="Choose Explicit Intent"
+          tabindex="0"
+        >Explicit Intent</button>
+        <button
+          class="btn"
+          id="t1Implicit"
+          data-answer="wrong"
+          aria-label="Choose Implicit Intent"
+          tabindex="0"
+        >Implicit Intent</button>
+      </div>
+
+      <!-- Animation area for Task 1 -->
+      <div class="anim-area" id="anim1" aria-hidden="true">
+        <div class="app-box app-a" id="t1AppA">A</div>
+        <div class="app-box app-b" id="t1AppB">B</div>
+        <svg class="route-svg" id="t1Svg"></svg>
+      </div>
+
+      <div id="task1Feedback" role="status" aria-live="polite"></div>
+
+      <div class="hint-area" id="task1HintArea"></div>
+    </div>
+
+    <!-- Divider -->
+    <div class="task-divider" id="taskDivider" style="display:none;" aria-hidden="true"></div>
+
+    <!-- Task 2: Implicit Intent -->
+    <div class="task-panel" id="task2" role="region" aria-label="Task 2: Routing scenario">
+      <h2 class="task-header">
+        Ask any capable app to share text
+        <span class="task-check" id="task2Check" aria-label="Task 2 complete">&#10003;</span>
+      </h2>
+
+      <div class="info-row">
+        <div class="info-badge" aria-label="Target known: No">
+          <span class="label">Target known?</span>
+          <span class="toggle-indicator">
+            <span class="toggle-track off" aria-hidden="true">
+              <span class="toggle-thumb"></span>
+            </span>
+            <span class="toggle-label no">No</span>
+          </span>
+        </div>
+        <div class="info-badge" aria-label="Action: Share Text">
+          <span class="label">Action</span>
+          <span>Share Text</span>
+        </div>
+      </div>
+
+      <div class="choice-row" id="task2Choices" role="group" aria-label="Choose the correct intent type">
+        <button
+          class="btn"
+          id="t2Explicit"
+          data-answer="wrong"
+          aria-label="Choose Explicit Intent"
+          tabindex="0"
+        >Explicit Intent</button>
+        <button
+          class="btn"
+          id="t2Implicit"
+          data-answer="correct"
+          aria-label="Choose Implicit Intent"
+          tabindex="0"
+        >Implicit Intent</button>
+      </div>
+
+      <!-- Animation area for Task 2 -->
+      <div class="anim-area" id="anim2" aria-hidden="true">
+        <div class="app-box app-a" id="t2AppA">A</div>
+        <div class="app-box app-r1" id="t2R1">?</div>
+        <div class="app-box app-r2" id="t2R2">?</div>
+        <div class="app-box app-r3" id="t2R3">?</div>
+        <svg class="route-svg" id="t2Svg"></svg>
+      </div>
+
+      <div id="task2Feedback" role="status" aria-live="polite"></div>
+
+      <div class="hint-area" id="task2HintArea"></div>
+    </div>
+
+    <!-- Progress -->
+    <div class="progress-bar" id="progressBar" aria-live="polite">
+      Tasks complete: <span id="progressCount">0</span> / 2
+    </div>
+
+  </div>
+  </div>
+
+  <script>
+    /* ===== Messaging API (required for Cybergame pages) ===== */
+    const Events={handlers:{},init(){window.addEventListener("message",e=>{if(e.origin!==window.location.origin)return;if(e.data.type!=="renjs-event")return;const{id,args,scope}=e.data;(this.handlers[id]||[]).forEach(fn=>fn.apply(scope,args))})},on(id,fn){this.handlers[id]=this.handlers[id]||[];this.handlers[id].push(fn);this.init()}};
+    const Game={Events,onMessage(id,fn){Events.on(id,fn)},sendMessage(id,args=[],scope={}){window.parent.postMessage({type:"renjs-event",id,args,scope},window.location.origin)}};
+
+    /* ===== Page Logic ===== */
+
+    let task1Done = false;
+    let task2Done = false;
+
+    /* --- Task 1 --- */
+
+    const t1Buttons = document.querySelectorAll("#task1Choices .btn");
+
+    t1Buttons.forEach(btn => {
+      btn.addEventListener("click", () => handleTask1(btn));
+      btn.addEventListener("keydown", e => {
+        if (e.code === "Enter" || e.code === "Space") {
+          e.preventDefault();
+          handleTask1(btn);
+        }
+      });
+    });
+
+    function handleTask1(btn) {
+      if (task1Done) return;
+
+      const isCorrect = btn.dataset.answer === "correct";
+
+      // Reset button styles
+      t1Buttons.forEach(b => {
+        b.classList.remove("correct-chosen", "wrong-chosen");
+      });
+
+      if (isCorrect) {
+        btn.classList.add("correct-chosen");
+        task1Done = true;
+
+        // Disable buttons
+        t1Buttons.forEach(b => b.disabled = true);
+
+        // Show green feedback
+        showFeedback("task1Feedback", true, "Correct! Explicit Intent targets a known component directly.");
+
+        // Show check mark
+        document.getElementById("task1Check").classList.add("visible");
+
+        // Play route arrow animation
+        playExplicitAnimation();
+
+        // Clear any hint
+        const t1Hint = document.getElementById("task1HintArea");
+        t1Hint.innerHTML = "";
+        t1Hint.classList.remove("has-content");
+
+        // Update progress
+        updateProgress();
+
+        // Let user read feedback and watch animation, then transition
+        setTimeout(() => {
+          // Collapse task 1 to free space
+          document.getElementById("task1").classList.add("collapsed");
+          document.getElementById("taskDivider").style.display = "none";
+
+          // Show task 2
+          const task2El = document.getElementById("task2");
+          task2El.classList.add("active");
+
+          setTimeout(() => {
+            document.getElementById("t2Explicit").focus();
+          }, 500);
+        }, 3000);
+      } else {
+        btn.classList.add("wrong-chosen");
+
+        // Show red feedback
+        showFeedback("task1Feedback", false, "Not quite. Try again.");
+
+        // Show hint
+        showHint("task1HintArea", "If you know the destination component, it's explicit.");
+
+        // Allow retry: remove wrong style after a moment
+        setTimeout(() => {
+          btn.classList.remove("wrong-chosen");
+        }, 800);
+      }
+    }
+
+    /* --- Task 2 --- */
+
+    const t2Buttons = document.querySelectorAll("#task2Choices .btn");
+
+    t2Buttons.forEach(btn => {
+      btn.addEventListener("click", () => handleTask2(btn));
+      btn.addEventListener("keydown", e => {
+        if (e.code === "Enter" || e.code === "Space") {
+          e.preventDefault();
+          handleTask2(btn);
+        }
+      });
+    });
+
+    function handleTask2(btn) {
+      if (task2Done) return;
+
+      const isCorrect = btn.dataset.answer === "correct";
+
+      t2Buttons.forEach(b => {
+        b.classList.remove("correct-chosen", "wrong-chosen");
+      });
+
+      if (isCorrect) {
+        btn.classList.add("correct-chosen");
+        task2Done = true;
+
+        t2Buttons.forEach(b => b.disabled = true);
+
+        showFeedback("task2Feedback", true, "Correct! Implicit Intent broadcasts an action for any capable app.");
+
+        document.getElementById("task2Check").classList.add("visible");
+
+        playBroadcastAnimation();
+
+        const t2Hint = document.getElementById("task2HintArea");
+        t2Hint.innerHTML = "";
+        t2Hint.classList.remove("has-content");
+
+        updateProgress();
+
+        // Both tasks done - let user read feedback, then complete
+        if (task1Done && task2Done) {
+          setTimeout(() => {
+            const overlay = document.createElement("div");
+            overlay.className = "completion-overlay";
+            overlay.setAttribute("aria-hidden", "true");
+            document.body.appendChild(overlay);
+            setTimeout(() => overlay.remove(), 1300);
+
+            Game.sendMessage("intent-router-complete");
+          }, 3000);
+        }
+      } else {
+        btn.classList.add("wrong-chosen");
+
+        showFeedback("task2Feedback", false, "Not quite. Try again.");
+
+        showHint("task2HintArea", "If you describe an action and let Android choose an app, it's implicit.");
+
+        setTimeout(() => {
+          btn.classList.remove("wrong-chosen");
+        }, 800);
+      }
+    }
+
+    /* --- Feedback --- */
+
+    function showFeedback(containerId, isCorrect, message) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = "";
+      const el = document.createElement("div");
+      el.className = "feedback-msg fade-in " + (isCorrect ? "correct" : "incorrect");
+      el.textContent = message;
+      container.appendChild(el);
+    }
+
+    /* --- Hints --- */
+
+    function showHint(containerId, hintMessage) {
+      const container = document.getElementById(containerId);
+      if (container.querySelector(".hint-btn")) return;
+      container.classList.add("has-content");
+
+      const hintBtn = document.createElement("button");
+      hintBtn.className = "hint-btn";
+      hintBtn.textContent = "Show Hint";
+      hintBtn.setAttribute("aria-expanded", "false");
+      hintBtn.setAttribute("aria-controls", containerId + "Text");
+
+      const hintText = document.createElement("p");
+      hintText.className = "hint-text";
+      hintText.id = containerId + "Text";
+      hintText.textContent = hintMessage;
+      hintText.setAttribute("role", "note");
+
+      hintBtn.addEventListener("click", () => {
+        const isVisible = hintText.classList.contains("visible");
+        hintText.classList.toggle("visible");
+        hintBtn.setAttribute("aria-expanded", !isVisible);
+        hintBtn.textContent = isVisible ? "Show Hint" : "Hide Hint";
+      });
+
+      hintBtn.addEventListener("keydown", e => {
+        if (e.code === "Enter" || e.code === "Space") {
+          e.preventDefault();
+          hintBtn.click();
+        }
+      });
+
+      container.appendChild(hintBtn);
+      container.appendChild(hintText);
+    }
+
+    /* --- Animations --- */
+
+    function playExplicitAnimation() {
+      const appA = document.getElementById("t1AppA");
+      const appB = document.getElementById("t1AppB");
+      const svg = document.getElementById("t1Svg");
+
+      document.getElementById("anim1").classList.add("active");
+      appA.classList.add("visible");
+
+      setTimeout(() => {
+        appB.classList.add("visible");
+
+        // Draw arrow line from A to B
+        const areaEl = document.getElementById("anim1");
+        const areaRect = areaEl.getBoundingClientRect();
+        const aRect = appA.getBoundingClientRect();
+        const bRect = appB.getBoundingClientRect();
+
+        const x1 = (aRect.left + aRect.width) - areaRect.left;
+        const y1 = (aRect.top + aRect.height / 2) - areaRect.top;
+        const x2 = bRect.left - areaRect.left;
+        const y2 = (bRect.top + bRect.height / 2) - areaRect.top;
+
+        svg.innerHTML = `
+          <defs>
+            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" fill="#39ff14" />
+            </marker>
+          </defs>
+          <line
+            x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"
+            stroke="#39ff14"
+            marker-end="url(#arrowhead)"
+            class="route-line-animated"
+          />
+        `;
+      }, 300);
+    }
+
+    function playBroadcastAnimation() {
+      const appA = document.getElementById("t2AppA");
+      const r1 = document.getElementById("t2R1");
+      const r2 = document.getElementById("t2R2");
+      const r3 = document.getElementById("t2R3");
+      const svg = document.getElementById("t2Svg");
+
+      document.getElementById("anim2").classList.add("active");
+      appA.classList.add("visible");
+
+      const areaEl = document.getElementById("anim2");
+      const areaRect = areaEl.getBoundingClientRect();
+      const aRect = appA.getBoundingClientRect();
+
+      const cx = (aRect.left + aRect.width / 2) - areaRect.left;
+      const cy = (aRect.top + aRect.height / 2) - areaRect.top;
+
+      // Broadcast pulse rings
+      svg.innerHTML = `
+        <circle cx="${cx}" cy="${cy}" r="8" class="broadcast-ring animate" />
+        <circle cx="${cx}" cy="${cy}" r="8" class="broadcast-ring animate delay1" />
+        <circle cx="${cx}" cy="${cy}" r="8" class="broadcast-ring animate delay2" />
+      `;
+
+      // Show receiver apps staggered
+      setTimeout(() => r1.classList.add("visible"), 400);
+      setTimeout(() => r2.classList.add("visible"), 600);
+      setTimeout(() => r3.classList.add("visible"), 800);
+    }
+
+    /* --- Progress --- */
+
+    function updateProgress() {
+      const count = (task1Done ? 1 : 0) + (task2Done ? 1 : 0);
+      const countEl = document.getElementById("progressCount");
+      countEl.textContent = count;
+      if (count === 2) {
+        countEl.classList.add("done");
+        document.getElementById("progressBar").innerHTML =
+          'Tasks complete: <span class="done">2 / 2</span>';
+      }
+    }
+  </script>
+</body>
+</html>

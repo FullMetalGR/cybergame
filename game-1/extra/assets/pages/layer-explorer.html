@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Android Layer Architecture</title>
+  <link rel="stylesheet" href="cybergame-common.css">
+  <style>
+    html, body {
+      background: transparent;
+      overflow: hidden;
+    }
+
+    .container {
+      justify-content: flex-start;
+      padding: 0;
+      gap: 0;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    /* Dark panel wrapper with neon border */
+    .panel-wrapper {
+      background: rgba(6, 10, 20, 0.85);
+      border: 1px solid rgba(0, 212, 255, 0.5);
+      border-radius: 8px;
+      padding: 24px 40px;
+      box-shadow: 0 0 20px rgba(0, 212, 255, 0.15), inset 0 0 30px rgba(0, 212, 255, 0.03);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 95%;
+      max-width: 720px;
+      max-height: 96vh;
+      overflow: hidden;
+    }
+
+    .page-title {
+      font-size: 20px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .page-subtitle {
+      font-size: 13px;
+      color: rgba(0, 212, 255, 0.6);
+      letter-spacing: 1px;
+      margin-bottom: 18px;
+    }
+
+    /* Layer stack wrapper */
+    .layer-stack {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 580px;
+      gap: 0;
+    }
+
+    /* Arrow between layers */
+    .layer-arrow {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 22px;
+      justify-content: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .layer-arrow .arrow-line {
+      width: 2px;
+      height: 10px;
+      background: linear-gradient(to bottom, rgba(0, 212, 255, 0.6), rgba(0, 212, 255, 0.2));
+    }
+
+    .layer-arrow .arrow-head {
+      width: 0;
+      height: 0;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top: 7px solid rgba(0, 212, 255, 0.5);
+    }
+
+    /* Individual layer panel */
+    .layer-panel {
+      position: relative;
+      width: 100%;
+      background: linear-gradient(135deg, rgba(10, 26, 42, 0.9), rgba(13, 45, 77, 0.6));
+      border: 1px solid rgba(0, 212, 255, 0.25);
+      border-radius: 8px;
+      padding: 14px 20px;
+      cursor: pointer;
+      transition: all 0.35s ease;
+      outline: none;
+    }
+
+    .layer-panel:hover,
+    .layer-panel:focus-visible {
+      border-color: rgba(0, 212, 255, 0.7);
+      background: linear-gradient(135deg, rgba(10, 26, 42, 1), rgba(13, 55, 95, 0.7));
+    }
+
+    .layer-panel.explored {
+      border-color: #ffd700;
+      box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+    }
+
+    /* Layer number badge */
+    .layer-badge {
+      position: absolute;
+      top: -10px;
+      left: 16px;
+      background: rgba(6, 10, 20, 0.95);
+      border: 1px solid rgba(0, 212, 255, 0.5);
+      border-radius: 4px;
+      padding: 2px 10px;
+      font-size: 10px;
+      color: rgba(0, 212, 255, 0.7);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .layer-panel.explored .layer-badge {
+      border-color: #ffd700;
+      color: #ffd700;
+    }
+
+    /* Layer header row */
+    .layer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .layer-name {
+      font-size: 17px;
+      font-weight: bold;
+      color: #00d4ff;
+      text-shadow: 0 0 8px rgba(0, 212, 255, 0.4);
+      letter-spacing: 1px;
+    }
+
+    .layer-panel.explored .layer-name {
+      color: #ffd700;
+      text-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
+    }
+
+    .show-example-btn {
+      background: linear-gradient(135deg, #0a2a3a, #0d3d5c);
+      color: #00d4ff;
+      border: 1px solid rgba(0, 212, 255, 0.4);
+      padding: 6px 14px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      cursor: pointer;
+      border-radius: 4px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      transition: all 0.3s ease;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .show-example-btn:hover,
+    .show-example-btn:focus-visible {
+      background: linear-gradient(135deg, #0d3d5c, #1a5a7a);
+      box-shadow: 0 0 12px rgba(0, 212, 255, 0.4);
+      border-color: #00d4ff;
+      outline: none;
+    }
+
+    .show-example-btn.active {
+      border-color: #39ff14;
+      color: #39ff14;
+      box-shadow: 0 0 10px rgba(57, 255, 20, 0.3);
+    }
+
+    /* Tooltip (definition on hover) */
+    .layer-tooltip {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      top: calc(100% + 8px);
+      background: rgba(10, 14, 26, 0.97);
+      border: 1px solid #00d4ff;
+      border-radius: 6px;
+      padding: 12px 16px;
+      color: #e0e6f0;
+      font-size: 13px;
+      line-height: 1.5;
+      max-width: 340px;
+      width: max-content;
+      box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+      z-index: 100;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+
+    .layer-tooltip::before {
+      content: '';
+      position: absolute;
+      top: -6px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 10px;
+      height: 10px;
+      background: rgba(10, 14, 26, 0.97);
+      border-left: 1px solid #00d4ff;
+      border-top: 1px solid #00d4ff;
+      transform: translateX(-50%) rotate(45deg);
+    }
+
+    .layer-panel:hover .layer-tooltip,
+    .layer-panel:focus-visible .layer-tooltip,
+    .layer-tooltip.visible {
+      opacity: 1;
+    }
+
+    .tooltip-label {
+      color: #00d4ff;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+
+    /* Example text area */
+    .layer-example {
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      transition: max-height 0.4s ease, opacity 0.4s ease, margin-top 0.3s ease;
+      margin-top: 0;
+    }
+
+    .layer-example.visible {
+      max-height: 120px;
+      opacity: 1;
+      margin-top: 10px;
+    }
+
+    .example-content {
+      background: rgba(57, 255, 20, 0.06);
+      border: 1px solid rgba(57, 255, 20, 0.2);
+      border-radius: 4px;
+      padding: 10px 14px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #c8f7c5;
+    }
+
+    .example-label {
+      color: #39ff14;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+
+    /* Progress indicator */
+    .progress-bar {
+      width: 100%;
+      max-width: 580px;
+      margin-top: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(0, 212, 255, 0.08);
+      border: 1px solid rgba(0, 212, 255, 0.25);
+      border-radius: 4px;
+      padding: 8px 24px;
+    }
+
+    .progress-track {
+      flex: 1;
+      height: 4px;
+      background: rgba(0, 212, 255, 0.15);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #00d4ff, #39ff14);
+      border-radius: 2px;
+      transition: width 0.5s ease;
+    }
+
+    .progress-text {
+      font-size: 12px;
+      color: rgba(0, 212, 255, 0.6);
+      letter-spacing: 1px;
+      white-space: nowrap;
+    }
+
+    /* Continue button area */
+    .continue-area {
+      margin-top: 16px;
+      text-align: center;
+    }
+
+    .continue-btn {
+      font-size: 15px;
+      padding: 14px 36px;
+      letter-spacing: 3px;
+      transition: all 0.4s ease;
+    }
+
+    .continue-btn:not(:disabled) {
+      border-color: #39ff14;
+      color: #39ff14;
+      box-shadow: 0 0 20px rgba(57, 255, 20, 0.3);
+    }
+
+    .continue-btn:not(:disabled):hover,
+    .continue-btn:not(:disabled):focus-visible {
+      box-shadow: 0 0 30px rgba(57, 255, 20, 0.5);
+      background: linear-gradient(135deg, #0a2a1a, #0d4d2c);
+    }
+
+    /* Explored check mark */
+    .explored-mark {
+      display: none;
+      color: #39ff14;
+      font-size: 14px;
+      margin-left: 8px;
+      text-shadow: 0 0 6px rgba(57, 255, 20, 0.5);
+    }
+
+    .layer-panel.explored .explored-mark {
+      display: inline;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container" role="main">
+    <div class="panel-wrapper">
+      <h1 class="page-title">Android Layer Architecture</h1>
+      <p class="page-subtitle">Explore each layer &mdash; hover for definitions, click to see examples</p>
+
+      <div class="layer-stack" role="list" aria-label="Android architecture layers from top (user-facing) to bottom (hardware-facing)">
+
+        <!-- Layer 1: Apps -->
+        <div
+          class="layer-panel"
+          role="listitem"
+          tabindex="0"
+          data-layer="apps"
+          aria-label="Apps layer. Tab to focus, hover or focus for definition, press Enter to show example."
+        >
+          <div class="layer-badge" aria-hidden="true">Layer 4 &mdash; Top</div>
+          <div class="layer-header">
+            <span class="layer-name">
+              Apps
+              <span class="explored-mark" aria-label="Explored">&#10003;</span>
+            </span>
+            <button
+              class="show-example-btn"
+              data-target="apps"
+              aria-label="Show real-world example for Apps layer"
+            >Show Example</button>
+          </div>
+          <div class="layer-example" id="example-apps" role="region" aria-live="polite">
+            <div class="example-content fade-in">
+              <div class="example-label">Real-World Example</div>
+              You open the Camera app to take a photo.
+            </div>
+          </div>
+          <div class="layer-tooltip" role="tooltip" id="tooltip-apps">
+            <div class="tooltip-label">Definition</div>
+            The programs users install and run (messaging, maps, banking).
+          </div>
+        </div>
+
+        <!-- Arrow -->
+        <div class="layer-arrow" aria-hidden="true">
+          <div class="arrow-line"></div>
+          <div class="arrow-head"></div>
+        </div>
+
+        <!-- Layer 2: Application Framework -->
+        <div
+          class="layer-panel"
+          role="listitem"
+          tabindex="0"
+          data-layer="framework"
+          aria-label="Application Framework layer. Tab to focus, hover or focus for definition, press Enter to show example."
+        >
+          <div class="layer-badge" aria-hidden="true">Layer 3</div>
+          <div class="layer-header">
+            <span class="layer-name">
+              Application Framework
+              <span class="explored-mark" aria-label="Explored">&#10003;</span>
+            </span>
+            <button
+              class="show-example-btn"
+              data-target="framework"
+              aria-label="Show real-world example for Application Framework layer"
+            >Show Example</button>
+          </div>
+          <div class="layer-example" id="example-framework" role="region" aria-live="polite">
+            <div class="example-content fade-in">
+              <div class="example-label">Real-World Example</div>
+              Camera app requests the Camera service through the Framework.
+            </div>
+          </div>
+          <div class="layer-tooltip" role="tooltip" id="tooltip-framework">
+            <div class="tooltip-label">Definition</div>
+            System-level APIs/services apps use (Activity Manager, Notification Manager, Location Service).
+          </div>
+        </div>
+
+        <!-- Arrow -->
+        <div class="layer-arrow" aria-hidden="true">
+          <div class="arrow-line"></div>
+          <div class="arrow-head"></div>
+        </div>
+
+        <!-- Layer 3: Android Runtime (ART) -->
+        <div
+          class="layer-panel"
+          role="listitem"
+          tabindex="0"
+          data-layer="art"
+          aria-label="Android Runtime (ART) layer. Tab to focus, hover or focus for definition, press Enter to show example."
+        >
+          <div class="layer-badge" aria-hidden="true">Layer 2</div>
+          <div class="layer-header">
+            <span class="layer-name">
+              Android Runtime (ART)
+              <span class="explored-mark" aria-label="Explored">&#10003;</span>
+            </span>
+            <button
+              class="show-example-btn"
+              data-target="art"
+              aria-label="Show real-world example for Android Runtime layer"
+            >Show Example</button>
+          </div>
+          <div class="layer-example" id="example-art" role="region" aria-live="polite">
+            <div class="example-content fade-in">
+              <div class="example-label">Real-World Example</div>
+              ART compiles and runs the Camera app's code.
+            </div>
+          </div>
+          <div class="layer-tooltip" role="tooltip" id="tooltip-art">
+            <div class="tooltip-label">Definition</div>
+            Runs compiled app code efficiently. It executes your app's instructions.
+          </div>
+        </div>
+
+        <!-- Arrow -->
+        <div class="layer-arrow" aria-hidden="true">
+          <div class="arrow-line"></div>
+          <div class="arrow-head"></div>
+        </div>
+
+        <!-- Layer 4: Linux Kernel -->
+        <div
+          class="layer-panel"
+          role="listitem"
+          tabindex="0"
+          data-layer="kernel"
+          aria-label="Linux Kernel layer. Tab to focus, hover or focus for definition, press Enter to show example."
+        >
+          <div class="layer-badge" aria-hidden="true">Layer 1 &mdash; Bottom</div>
+          <div class="layer-header">
+            <span class="layer-name">
+              Linux Kernel
+              <span class="explored-mark" aria-label="Explored">&#10003;</span>
+            </span>
+            <button
+              class="show-example-btn"
+              data-target="kernel"
+              aria-label="Show real-world example for Linux Kernel layer"
+            >Show Example</button>
+          </div>
+          <div class="layer-example" id="example-kernel" role="region" aria-live="polite">
+            <div class="example-content fade-in">
+              <div class="example-label">Real-World Example</div>
+              Kernel talks to the actual camera hardware driver.
+            </div>
+          </div>
+          <div class="layer-tooltip" role="tooltip" id="tooltip-kernel">
+            <div class="tooltip-label">Definition</div>
+            Core of the OS managing processes, memory, file access, and drivers (camera, audio, Wi-Fi).
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Progress -->
+      <div class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="4" aria-label="Exploration progress">
+        <div class="progress-track">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <span class="progress-text" id="progress-text">0 / 4 explored</span>
+      </div>
+
+      <!-- Continue -->
+      <div class="continue-area">
+        <button
+          class="btn continue-btn"
+          id="continue-btn"
+          disabled
+          aria-label="Continue to next section. Explore all 4 layers first."
+        >Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── Messaging API ──
+    const Events = {
+      handlers: {},
+      init() {
+        window.addEventListener("message", (event) => {
+          if (event.origin !== window.location.origin) return;
+          if (event.data.type !== "renjs-event") return;
+          const { id, args, scope } = event.data;
+          (this.handlers[id] || []).forEach((fn) => fn.apply(scope, args));
+        });
+      },
+      on(id, fn) {
+        this.handlers[id] = this.handlers[id] || [];
+        this.handlers[id].push(fn);
+        this.init();
+      },
+    };
+
+    const Game = {
+      Events,
+      onMessage(id, fn) { Events.on(id, fn); },
+      sendMessage(id, args = [], scope = {}) {
+        window.parent.postMessage({ type: "renjs-event", id, args, scope }, window.location.origin);
+      },
+    };
+
+    // ── State ──
+    const state = {
+      hovered: { apps: false, framework: false, art: false, kernel: false },
+      exampleShown: { apps: false, framework: false, art: false, kernel: false },
+    };
+
+    const layerPanels = document.querySelectorAll('.layer-panel');
+    const continueBtn = document.getElementById('continue-btn');
+    const progressFill = document.getElementById('progress-fill');
+    const progressText = document.getElementById('progress-text');
+
+    // ── Check if a layer is fully explored ──
+    function isExplored(layer) {
+      return state.hovered[layer] && state.exampleShown[layer];
+    }
+
+    // ── Update progress and continue button ──
+    function updateProgress() {
+      const layers = ['apps', 'framework', 'art', 'kernel'];
+      const exploredCount = layers.filter(isExplored).length;
+
+      progressFill.style.width = (exploredCount / 4 * 100) + '%';
+      progressText.textContent = exploredCount + ' / 4 explored';
+
+      const progressBar = document.querySelector('.progress-bar');
+      progressBar.setAttribute('aria-valuenow', exploredCount);
+
+      if (exploredCount === 4) {
+        continueBtn.disabled = false;
+        continueBtn.setAttribute('aria-label', 'Continue to next section');
+        continueBtn.classList.add('pulse');
+      }
+
+      // Update panel explored class
+      layers.forEach(layer => {
+        const panel = document.querySelector(`[data-layer="${layer}"]`);
+        if (isExplored(layer)) {
+          panel.classList.add('explored');
+        }
+      });
+    }
+
+    // ── Mark layer as hovered ──
+    function markHovered(layer) {
+      if (!state.hovered[layer]) {
+        state.hovered[layer] = true;
+        updateProgress();
+      }
+    }
+
+    // ── Close a specific example ──
+    function closeExample(layer) {
+      const exampleEl = document.getElementById('example-' + layer);
+      const btn = document.querySelector(`.show-example-btn[data-target="${layer}"]`);
+      if (exampleEl.classList.contains('visible')) {
+        exampleEl.classList.remove('visible');
+        btn.classList.remove('active');
+        btn.textContent = 'Show Example';
+        btn.setAttribute('aria-label', 'Show real-world example for ' + getLayerLabel(layer) + ' layer');
+      }
+    }
+
+    // ── Close all examples except the given one ──
+    function closeAllExcept(exceptLayer) {
+      ['apps', 'framework', 'art', 'kernel'].forEach(layer => {
+        if (layer !== exceptLayer) closeExample(layer);
+      });
+    }
+
+    // ── Toggle example visibility ──
+    function toggleExample(layer) {
+      const exampleEl = document.getElementById('example-' + layer);
+
+      if (exampleEl.classList.contains('visible')) {
+        closeExample(layer);
+      } else {
+        // Close all others first
+        closeAllExcept(layer);
+
+        const btn = document.querySelector(`.show-example-btn[data-target="${layer}"]`);
+        exampleEl.classList.add('visible');
+        btn.classList.add('active');
+        btn.textContent = 'Hide Example';
+        btn.setAttribute('aria-label', 'Hide real-world example for ' + getLayerLabel(layer) + ' layer');
+
+        if (!state.exampleShown[layer]) {
+          state.exampleShown[layer] = true;
+          updateProgress();
+        }
+      }
+    }
+
+    function getLayerLabel(layer) {
+      const labels = {
+        apps: 'Apps',
+        framework: 'Application Framework',
+        art: 'Android Runtime (ART)',
+        kernel: 'Linux Kernel'
+      };
+      return labels[layer] || layer;
+    }
+
+    // ── Event listeners: hover/focus on panels ──
+    layerPanels.forEach(panel => {
+      const layer = panel.dataset.layer;
+
+      // Mouse hover
+      panel.addEventListener('mouseenter', () => markHovered(layer));
+
+      // Focus (keyboard navigation)
+      panel.addEventListener('focus', () => markHovered(layer));
+
+      // Keyboard: Enter to toggle example, Escape to close tooltip
+      panel.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          toggleExample(layer);
+        }
+        if (e.key === 'Escape') {
+          const tooltip = panel.querySelector('.layer-tooltip');
+          // Force hide tooltip briefly when Escape is pressed
+          tooltip.classList.remove('visible');
+        }
+      });
+    });
+
+    // ── Event listeners: Show Example buttons ──
+    document.querySelectorAll('.show-example-btn').forEach(btn => {
+      const layer = btn.dataset.target;
+
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        // Also mark as hovered since user interacted with this layer
+        markHovered(layer);
+        toggleExample(layer);
+      });
+
+      btn.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          e.stopPropagation();
+          markHovered(layer);
+          toggleExample(layer);
+        }
+      });
+    });
+
+    // ── Continue button ──
+    continueBtn.addEventListener('click', () => {
+      if (!continueBtn.disabled) {
+        Game.sendMessage("layer-explorer-complete");
+      }
+    });
+
+    continueBtn.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !continueBtn.disabled) {
+        Game.sendMessage("layer-explorer-complete");
+      }
+    });
+  </script>
+</body>
+</html>

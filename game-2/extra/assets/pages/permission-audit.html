@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="cybergame-common.css">
+<style>
+  html, body { background: transparent; overflow: hidden; }
+  .container { justify-content: center; align-items: center; }
+  .branded-panel {
+    background: rgba(6, 10, 20, 0.85);
+    border: 1px solid rgba(0, 212, 255, 0.5);
+    border-radius: 8px;
+    padding: 18px 24px;
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.15), inset 0 0 30px rgba(0, 212, 255, 0.03);
+    display: flex; flex-direction: column; align-items: center;
+    gap: 12px; max-width: 780px; width: 96%;
+  }
+  .title { font-size: 20px; color: #00d4ff; text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 0 10px rgba(0, 212, 255, 0.5); margin-bottom: 6px; }
+  .app-desc {
+    font-size: 13px; color: rgba(224,230,240,0.7); text-align: center;
+    max-width: 600px; line-height: 1.5;
+    background: rgba(0,212,255,0.05); border: 1px solid rgba(0,212,255,0.15);
+    border-radius: 6px; padding: 10px 16px;
+  }
+  .app-desc strong { color: #00d4ff; }
+
+  .audit-area {
+    display: flex; gap: 24px; align-items: flex-start; margin-top: 8px;
+  }
+
+  .cards-panel {
+    display: flex; flex-direction: column; gap: 8px; min-width: 240px;
+  }
+  .cards-panel .label { font-size: 13px; color: rgba(224,230,240,0.5); text-transform: uppercase; letter-spacing: 1px; text-align: center; }
+
+  .perm-card {
+    padding: 10px 14px; cursor: grab; user-select: none;
+    background: linear-gradient(135deg, #0a1a2a, #0d2d4d);
+    border: 1px solid #00d4ff; border-radius: 6px;
+    font-size: 13px; color: #e0e6f0; transition: all 0.2s ease;
+    text-align: center; word-break: break-word;
+  }
+  .perm-card:hover { box-shadow: 0 0 12px rgba(0,212,255,0.5); }
+  .perm-card.dragging { opacity: 0.4; }
+  .perm-card.placed {
+    cursor: default; pointer-events: none;
+    border: none; background: transparent;
+    box-shadow: none; padding: 6px 4px;
+    font-size: 12px;
+  }
+  .perm-card.placed.correct { color: #39ff14; text-shadow: 0 0 6px rgba(57,255,20,0.5); }
+  .perm-card.placed.wrong { color: #ff3366; text-shadow: 0 0 6px rgba(255,51,102,0.5); }
+
+  .zones {
+    display: flex; gap: 20px;
+  }
+
+  .zone {
+    width: 230px; min-height: 200px; border-radius: 8px;
+    padding: 12px 10px; display: flex; flex-direction: column; gap: 4px;
+    transition: all 0.2s ease;
+  }
+  .zone .zone-label {
+    font-size: 14px; font-weight: bold; text-align: center;
+    text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px;
+  }
+  .zone-keep {
+    border: 2px dashed rgba(57,255,20,0.3); background: rgba(57,255,20,0.03);
+  }
+  .zone-keep .zone-label { color: #39ff14; }
+  .zone-keep.drag-over { border-color: #39ff14; background: rgba(57,255,20,0.1); }
+
+  .zone-remove {
+    border: 2px dashed rgba(255,51,102,0.3); background: rgba(255,51,102,0.03);
+  }
+  .zone-remove .zone-label { color: #ff3366; }
+  .zone-remove.drag-over { border-color: #ff3366; background: rgba(255,51,102,0.1); }
+
+  .feedback-area {
+    min-height: 30px; text-align: center; font-size: 14px;
+  }
+
+  .hint-row { display: flex; gap: 12px; align-items: center; justify-content: center; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="branded-panel">
+  <div class="title">Permission Audit</div>
+  <div class="app-desc">
+    <strong>App features:</strong> User login, display profile, sync non-sensitive settings, send notifications.<br>
+    No camera, no contacts, no SMS features.
+  </div>
+
+  <div class="audit-area">
+    <div class="cards-panel" id="cardsPanel">
+      <div class="label">Permissions</div>
+    </div>
+
+    <div class="zones">
+      <div class="zone zone-keep" id="zoneKeep" data-zone="keep">
+        <div class="zone-label">Keep</div>
+      </div>
+      <div class="zone zone-remove" id="zoneRemove" data-zone="remove">
+        <div class="zone-label">Remove</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="feedback-area" id="feedback"></div>
+  <div class="hint-row">
+    <button class="hint-btn" id="hintBtn">Show Hint</button>
+    <div class="hint-text" id="hintText">If the feature list doesn't mention it, remove it.</div>
+  </div>
+  </div>
+</div>
+
+<script>
+const permissions = [
+  { name: "INTERNET", correct: "keep" },
+  { name: "POST_NOTIFICATIONS", correct: "keep" },
+  { name: "READ_CONTACTS", correct: "remove" },
+  { name: "READ_SMS", correct: "remove" },
+  { name: "ACCESS_FINE_LOCATION", correct: "remove" },
+];
+
+const cardsPanel = document.getElementById("cardsPanel");
+const zoneKeep = document.getElementById("zoneKeep");
+const zoneRemove = document.getElementById("zoneRemove");
+const feedback = document.getElementById("feedback");
+const hintBtn = document.getElementById("hintBtn");
+const hintText = document.getElementById("hintText");
+let placed = 0;
+
+// Shuffle
+const shuffled = [...permissions].sort(() => Math.random() - 0.5);
+
+shuffled.forEach((p, i) => {
+  const card = document.createElement("div");
+  card.className = "perm-card";
+  card.textContent = p.name;
+  card.draggable = true;
+  card.dataset.perm = p.name;
+  card.dataset.correct = p.correct;
+  card.id = `card-${i}`;
+  card.tabIndex = 0;
+  card.setAttribute("role", "option");
+  card.setAttribute("aria-label", `${p.name} permission — drag to Keep or Remove`);
+
+  card.addEventListener("dragstart", e => {
+    e.dataTransfer.setData("text/plain", card.id);
+    card.classList.add("dragging");
+  });
+  card.addEventListener("dragend", () => card.classList.remove("dragging"));
+
+  cardsPanel.appendChild(card);
+});
+
+[zoneKeep, zoneRemove].forEach(zone => {
+  zone.addEventListener("dragover", e => { e.preventDefault(); zone.classList.add("drag-over"); });
+  zone.addEventListener("dragleave", () => zone.classList.remove("drag-over"));
+  zone.addEventListener("drop", e => {
+    e.preventDefault();
+    zone.classList.remove("drag-over");
+    const cardId = e.dataTransfer.getData("text/plain");
+    const card = document.getElementById(cardId);
+    if (!card || card.classList.contains("placed")) return;
+
+    const zoneName = zone.dataset.zone;
+    const isCorrect = card.dataset.correct === zoneName;
+
+    card.classList.add("placed");
+    card.draggable = false;
+
+    if (isCorrect) {
+      card.classList.add("correct");
+      zone.appendChild(card);
+      placed++;
+      if (placed === permissions.length) {
+        feedback.innerHTML = '<span class="feedback-correct">All permissions correctly audited!</span>';
+        setTimeout(() => {
+          try { window.parent.postMessage({ type: "renjs-event", id: "permission-audit-complete" }, "*"); } catch(e) {}
+        }, 1500);
+      }
+    } else {
+      card.classList.add("wrong");
+      card.classList.remove("placed");
+      card.draggable = true;
+      setTimeout(() => { card.classList.remove("wrong"); }, 1000);
+
+      const guidance = card.dataset.perm === "ACCESS_FINE_LOCATION"
+        ? "Location requires a clear user-facing feature. Do we have one?"
+        : "This permission isn't needed by any feature in the app description.";
+      feedback.innerHTML = `<span class="feedback-incorrect">${guidance}</span>`;
+    }
+  });
+});
+
+hintBtn.addEventListener("click", () => hintText.classList.toggle("visible"));
+
+window.addEventListener("load", () => window.focus());
+</script>
+</body>
+</html>

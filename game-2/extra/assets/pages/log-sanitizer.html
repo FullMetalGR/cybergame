@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="cybergame-common.css">
+<style>
+  html, body { background: transparent; overflow: hidden; }
+  .container { justify-content: center; align-items: center; }
+  .branded-panel {
+    background: rgba(6, 10, 20, 0.85);
+    border: 1px solid rgba(0, 212, 255, 0.5);
+    border-radius: 8px;
+    padding: 16px 22px;
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.15), inset 0 0 30px rgba(0, 212, 255, 0.03);
+    display: flex; flex-direction: column; align-items: center;
+    gap: 10px; max-width: 720px; width: 96%;
+  }
+  .title { font-size: 20px; color: #00d4ff; text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 0 10px rgba(0, 212, 255, 0.5); margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: rgba(0, 212, 255, 0.6); letter-spacing: 1px; max-width: 600px; text-align: center; }
+
+  .log-card {
+    background: rgba(0,0,0,0.3); border: 1px solid rgba(0,212,255,0.2);
+    border-radius: 6px; padding: 12px 16px; transition: all 0.3s;
+    width: 100%; max-width: 660px;
+    animation: fadeIn 0.35s ease-out;
+  }
+  .log-card.completed { border-color: #39ff14; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .log-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .log-label { font-size: 12px; color: #ffd700; text-transform: uppercase; font-weight: bold; }
+  .log-counter { font-size: 11px; color: rgba(224,230,240,0.4); }
+  .log-sublabel { font-size: 11px; color: rgba(224,230,240,0.4); text-transform: uppercase; letter-spacing: 0.5px; margin: 8px 0 5px; }
+
+  .log-raw {
+    font-family: 'Courier New', monospace; font-size: 13px; color: #e0e6f0;
+    background: rgba(0,0,0,0.4); padding: 6px 10px; border-radius: 4px;
+    line-height: 1.5; word-break: break-all;
+  }
+
+  .candidates { display: flex; flex-direction: column; gap: 5px; }
+
+  .candidate-btn {
+    text-align: left; padding: 8px 12px; border-radius: 4px;
+    background: rgba(10,14,26,0.6); border: 1px solid rgba(0,212,255,0.2);
+    color: #e0e6f0; font-family: 'Courier New', monospace; font-size: 12px;
+    cursor: pointer; transition: all 0.2s ease;
+    line-height: 1.5; word-break: break-all;
+  }
+  .candidate-btn:hover:not(:disabled) { border-color: #00d4ff; box-shadow: 0 0 8px rgba(0,212,255,0.2); }
+  .candidate-btn.correct-pick { border-color: #39ff14; background: rgba(57,255,20,0.1); }
+  .candidate-btn.wrong-pick { border-color: #ff3366; background: rgba(255,51,102,0.1); opacity: 0.6; }
+  .candidate-btn:disabled { cursor: not-allowed; }
+  .candidate-btn .redacted-val { color: #39ff14; font-weight: bold; }
+  .candidate-btn .partial-val { color: #ff9933; font-weight: bold; }
+
+  .line-feedback { font-size: 12px; margin-top: 6px; min-height: 16px; line-height: 1.4; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="branded-panel">
+  <div class="title">Log Sanitizer</div>
+  <div class="subtitle">Pick the version that redacts secrets without losing useful debug context</div>
+
+  <div id="cardSlot"></div>
+
+  <div class="hint-row" style="display:flex;gap:12px;align-items:center;justify-content:center">
+    <button class="hint-btn" id="hintBtn">Show Hint</button>
+    <div class="hint-text" id="hintText">Redact what could authenticate or identify a person. Keep what helps diagnose (event type, outcome, internal IDs, timestamps).</div>
+  </div>
+  </div>
+</div>
+
+<script>
+const lines = [
+  {
+    label: "Log Line",
+    raw: 'Login attempt: user=alex@example.com password=Secr3t! result=failure',
+    candidates: [
+      {
+        text: 'Login attempt: user=<span class="redacted-val">&lt;REDACTED&gt;</span> password=<span class="redacted-val">&lt;REDACTED&gt;</span> result=failure',
+        correct: true,
+        feedback: "Email and password redacted; the failure outcome stays — that's the value of the log."
+      },
+      {
+        text: 'Login attempt: user=<span class="partial-val">alex@***.com</span> password=<span class="redacted-val">&lt;REDACTED&gt;</span> result=failure',
+        correct: false,
+        feedback: "Partial masking still leaks the domain. Username + domain is enough to target the user — redact the whole value."
+      },
+      {
+        text: 'Login attempt: user=<span class="redacted-val">&lt;REDACTED&gt;</span> password=<span class="redacted-val">&lt;REDACTED&gt;</span> result=<span class="redacted-val">&lt;REDACTED&gt;</span>',
+        correct: false,
+        feedback: "Over-redacted. The outcome (failure) is debugging gold, not sensitive data. Now the log line tells you nothing."
+      }
+    ]
+  },
+  {
+    label: "Log Line",
+    raw: 'Session created: user_id=usr_4892 token=ABCD-1234-SECRET expires=2026-05-20',
+    candidates: [
+      {
+        text: 'Session created: user_id=usr_4892 token=<span class="redacted-val">&lt;REDACTED&gt;</span> expires=2026-05-20',
+        correct: true,
+        feedback: "Internal user IDs aren't PII, and expiry timestamps aid debugging — only the token is sensitive."
+      },
+      {
+        text: 'Session created: user_id=<span class="redacted-val">&lt;REDACTED&gt;</span> token=<span class="redacted-val">&lt;REDACTED&gt;</span> expires=<span class="redacted-val">&lt;REDACTED&gt;</span>',
+        correct: false,
+        feedback: "Over-redacted. An internal user_id can't be used to log in, and the expiry timestamp helps you diagnose session issues."
+      },
+      {
+        text: 'Session created: user_id=usr_4892 token=<span class="partial-val">ABCD-****</span> expires=2026-05-20',
+        correct: false,
+        feedback: "Partial token still leaks the prefix. Tokens must be redacted entirely — any portion can aid an attacker."
+      }
+    ]
+  }
+];
+
+const cardSlot = document.getElementById("cardSlot");
+let currentIdx = 0;
+
+function renderLine(idx) {
+  cardSlot.innerHTML = "";
+
+  const line = lines[idx];
+  const shuffled = [...line.candidates].sort(() => Math.random() - 0.5);
+
+  const card = document.createElement("div");
+  card.className = "log-card";
+
+  let candidatesHtml = "";
+  shuffled.forEach((c, ci) => {
+    candidatesHtml += `<button class="candidate-btn" data-cand="${ci}">${c.text}</button>`;
+  });
+
+  card.innerHTML = `
+    <div class="log-header">
+      <div class="log-label">${line.label}</div>
+      <div class="log-counter">${idx + 1} / ${lines.length}</div>
+    </div>
+    <div class="log-sublabel">Original</div>
+    <div class="log-raw">${line.raw}</div>
+    <div class="log-sublabel">Pick the correctly sanitized version</div>
+    <div class="candidates">${candidatesHtml}</div>
+    <div class="line-feedback" id="feedback"></div>
+  `;
+
+  cardSlot.appendChild(card);
+
+  const fb = card.querySelector("#feedback");
+  card.querySelectorAll(".candidate-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      if (btn.disabled) return;
+      const candidate = shuffled[+btn.dataset.cand];
+
+      if (candidate.correct) {
+        btn.classList.add("correct-pick");
+        card.querySelectorAll(".candidate-btn").forEach(b => b.disabled = true);
+        card.classList.add("completed");
+        fb.innerHTML = `<span class="feedback-correct">${candidate.feedback}</span>`;
+        setTimeout(() => advance(), 1800);
+      } else {
+        btn.classList.add("wrong-pick");
+        btn.disabled = true;
+        fb.innerHTML = `<span class="feedback-incorrect">${candidate.feedback}</span>`;
+      }
+    });
+  });
+}
+
+function advance() {
+  currentIdx++;
+  if (currentIdx < lines.length) {
+    renderLine(currentIdx);
+  } else {
+    cardSlot.innerHTML = '<div class="log-card" style="text-align:center;padding:24px"><span class="feedback-correct" style="font-size:15px">All log lines sanitized correctly!</span></div>';
+    setTimeout(() => {
+      try { window.parent.postMessage({ type: "renjs-event", id: "log-sanitizer-complete" }, "*"); } catch(e) {}
+    }, 1500);
+  }
+}
+
+renderLine(0);
+
+document.getElementById("hintBtn").addEventListener("click", () => {
+  document.getElementById("hintText").classList.toggle("visible");
+});
+
+window.addEventListener("load", () => window.focus());
+</script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+module:
+  name: Secure Upgrade - Android Defence Protocols
+  id: com.ctflib.cybergame.story-2-secure-upgrade
+  version: v1
+  organisation: com.ctflib.cybergame

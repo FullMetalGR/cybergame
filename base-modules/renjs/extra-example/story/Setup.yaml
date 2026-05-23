@@ -1,0 +1,58 @@
+
+backgrounds:
+  bedroom_1: assets/backgrounds/bedroom_1.jpg
+  building_1: assets/backgrounds/building_1.jpg
+  building_2: assets/backgrounds/building_2.jpg
+  color_1_gray: assets/backgrounds/color_1_gray.jpg
+  office_1: assets/backgrounds/office_1.jpg
+  office_2: assets/backgrounds/office_2.jpg
+  os_kali_1: assets/backgrounds/os_kali_1.jpg
+  os_windows_1: assets/backgrounds/os_windows_1.jpg
+  park_1: assets/backgrounds/park_1.jpg
+
+  custom_bg_slide_1: assets/backgrounds/custom-bg-slide-1.png
+  custom_bg_slide_2: assets/backgrounds/custom-bg-slide-2.png
+  custom_bg_slide_3: assets/backgrounds/custom-bg-slide-3.png
+  custom_bg_slide_4: assets/backgrounds/custom-bg-slide-4.png
+  custom_bg_slide_5: assets/backgrounds/custom-bg-slide-5.png
+  custom_bg_slide_6: assets/backgrounds/custom-bg-slide-6.png
+  custom_bg_slide_7: assets/backgrounds/custom-bg-slide-7.png
+  custom_bg_slide_8: assets/backgrounds/custom-bg-slide-8.png
+  custom_bg_slide_9: assets/backgrounds/custom-bg-slide-9.png
+
+characters:
+  player:
+    displayName: Player
+    speechColour: "#6e9fce"
+    looks:
+      normal: assets/characters/male_1.png
+  manager:
+    displayName: Manager
+    speechColour: "#01012b"
+    looks:
+      normal: assets/characters/male_3.png
+  receptionist:
+    displayName: Receptionist
+    speechColour: "#ff2a6d"
+    looks:
+      normal: assets/characters/female_4.png
+  dog:
+    displayName: Dog
+    speechColour: "#777777"
+    looks:
+      normal: assets/characters/dog_1.png
+  dogs_owner:
+    displayName: Dog's Owner
+    speechColour: "#ec8788"
+    looks:
+      normal: assets/characters/male_2.png
+
+cgs:
+  phone_1: assets/items/phone_1.png
+
+music:
+
+sfx:
+
+extra:
+  spritesheets: []

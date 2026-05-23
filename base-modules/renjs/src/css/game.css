@@ -1,0 +1,64 @@
+/*
+ * Game Plugins CSS
+ * GramThanos
+ */
+
+
+/*
+	Color palette
+		#ff2a6d - pink
+		#d1f7ff - light
+		#05d9e8 - light blue
+		#005678 - blue
+		#01012b - dark blue
+*/
+
+html, body {
+	margin: 0px;
+	padding: 0px;
+	font-size: 26px;
+	font-family: 'font_anonymous_pro';
+}
+body {
+	background-color: black;
+}
+input:focus {
+	outline: none;
+}
+.story-box {
+	background-color: #d1f7ff;
+	border: 5px solid #ff2a6d;
+	color: #01012b;
+	padding: 15px 25px;
+}
+.story-btn {
+	display: inline-block;
+	background-color: #05d9e8;
+	border-radius: 8px;
+	border: 2px solid #005678;
+	border-bottom: 4px solid #005678;
+	color: #005678;
+	margin-top: 0px;
+	cursor: pointer;
+	font-size: 26px;
+	padding: 5px 10px;
+}
+.story-btn:hover {
+	border: 2px solid #005678;
+	border-bottom: 3px solid #005678;
+	margin-top: 1px;
+	color: #ff2a6d;
+}
+.story-box a {
+	color: #005678;
+	text-decoration: none;
+}
+
+code {
+	margin: 10px 0;
+	font-size: 22px;
+	background: #fff;
+	overflow-x: auto;
+	display: block;
+	white-space: pre;
+}

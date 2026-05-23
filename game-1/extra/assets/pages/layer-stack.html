@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Android Layer Stack</title>
+  <link rel="stylesheet" href="cybergame-common.css" />
+  <style>
+    html, body {
+      background: transparent;
+      overflow: hidden;
+    }
+
+    /* ── Full-page absolute layout ── */
+    .game-layout {
+      position: relative;
+      width: 1280px;
+      height: 720px;
+      overflow: hidden;
+    }
+
+    /* ===== DROP SLOTS ===== */
+    /* Positioned over the background rectangles.
+       Adjust --tower-offset-x / --tower-offset-y if alignment drifts. */
+    :root {
+      --tower-offset-x: 0px;
+      --tower-offset-y: 0px;
+      --slot-left: calc(430px + var(--tower-offset-x));
+      --slot-width: 309px;
+    }
+
+    .tower-slot {
+      position: absolute;
+      left: var(--slot-left);
+      width: var(--slot-width);
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      /* Transparent by default so background neon border shows through */
+      background: rgba(0, 10, 25, 0.25);
+      border: 1px dashed rgba(0, 212, 255, 0.2);
+      border-radius: 4px;
+      transition: all 0.25s ease;
+      z-index: 2;
+    }
+
+    /* Slot-specific positions (iframe coords = bg coords - 40px vertical offset) */
+    #slot-1 { top: calc(54px + var(--tower-offset-y)); height: 126px; }
+    #slot-2 { top: calc(209px + var(--tower-offset-y)); height: 116px; }
+    #slot-3 { top: calc(354px + var(--tower-offset-y)); height: 124px; }
+    #slot-4 { top: calc(507px + var(--tower-offset-y)); height: 116px; }
+
+    /* Placeholder text when empty */
+    .tower-slot::before {
+      content: attr(data-placeholder);
+      color: rgba(0, 212, 255, 0.3);
+      font-size: 13px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      pointer-events: none;
+    }
+
+    .tower-slot.occupied::before {
+      display: none;
+    }
+
+    /* Drag over state */
+    .tower-slot.drag-over {
+      background: rgba(0, 212, 255, 0.15);
+      border-color: rgba(0, 212, 255, 0.6);
+      box-shadow: inset 0 0 20px rgba(0, 212, 255, 0.15), 0 0 15px rgba(0, 212, 255, 0.2);
+    }
+
+    /* Correct placement */
+    .tower-slot.correct {
+      background: rgba(57, 255, 20, 0.1);
+      border-color: rgba(57, 255, 20, 0.4);
+      border-style: solid;
+      box-shadow: inset 0 0 15px rgba(57, 255, 20, 0.08), 0 0 12px rgba(57, 255, 20, 0.2);
+    }
+
+    .tower-slot.correct::after {
+      content: "\2713";
+      position: absolute;
+      right: 12px;
+      color: #39ff14;
+      font-size: 20px;
+      text-shadow: 0 0 8px rgba(57, 255, 20, 0.6);
+    }
+
+    /* Incorrect flash */
+    @keyframes flash-incorrect {
+      0%   { border-color: #ff3366; background: rgba(255, 51, 102, 0.2); box-shadow: 0 0 20px rgba(255, 51, 102, 0.4); }
+      100% { border-color: rgba(0, 212, 255, 0.2); background: rgba(0, 10, 25, 0.25); box-shadow: none; }
+    }
+
+    .tower-slot.flash-wrong {
+      animation: flash-incorrect 0.6s ease-out forwards;
+    }
+
+    /* ── Tower endpoint labels ── */
+    .tower-label {
+      position: absolute;
+      left: var(--slot-left);
+      width: var(--slot-width);
+      text-align: center;
+      font-size: 13px;
+      color: #00d4ff;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      font-weight: bold;
+      text-shadow: 0 0 10px rgba(0, 212, 255, 0.6), 0 1px 3px rgba(0, 0, 0, 0.8);
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    #label-top    { top: calc(54px + var(--tower-offset-y) - 24px); }
+    #label-bottom { top: calc(507px + var(--tower-offset-y) + 116px + 6px); }
+
+    /* ===== COMPONENTS PANEL (right side) ===== */
+    .components-panel {
+      position: absolute;
+      right: 60px;
+      top: 60px;
+      width: 340px;
+      background: rgba(6, 10, 20, 0.88);
+      border: 1px solid rgba(0, 212, 255, 0.5);
+      border-radius: 8px;
+      padding: 20px 24px;
+      box-shadow: 0 0 20px rgba(0, 212, 255, 0.15), inset 0 0 30px rgba(0, 212, 255, 0.03);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      z-index: 3;
+    }
+
+    .components-panel h2 {
+      font-size: 16px;
+      margin-bottom: 4px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #e0e6f0;
+    }
+
+    .components-panel .subtitle {
+      font-size: 12px;
+      color: #7a8ba8;
+      margin-bottom: 14px;
+      text-align: center;
+    }
+
+    /* ── Tile pool ── */
+    .pool-label {
+      font-size: 11px;
+      color: #4a6a8a;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 6px;
+    }
+
+    .tile-pool {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 48px;
+      padding: 10px 14px;
+      border: 1px dashed rgba(0, 212, 255, 0.12);
+      border-radius: 6px;
+      background: rgba(0, 10, 20, 0.4);
+      width: 100%;
+      margin-bottom: 10px;
+      align-items: center;
+    }
+
+    /* ── Tiles ── */
+    .draggable.tile {
+      padding: 10px 18px;
+      margin: 0;
+      font-size: 13px;
+      letter-spacing: 1px;
+      border: 1px solid rgba(0, 212, 255, 0.6);
+      background: linear-gradient(135deg, #081828, #0c2e4e);
+      box-shadow: 0 0 8px rgba(0, 212, 255, 0.15), inset 0 1px 0 rgba(0, 212, 255, 0.1);
+      white-space: nowrap;
+      transition: all 0.2s ease, transform 0.15s ease;
+      cursor: grab;
+      border-radius: 4px;
+      color: #d1f7ff;
+      text-align: center;
+      width: fit-content;
+      min-width: 180px;
+    }
+
+    .draggable.tile:hover,
+    .draggable.tile:focus {
+      border-color: #00d4ff;
+      box-shadow: 0 0 16px rgba(0, 212, 255, 0.45);
+      transform: translateY(-2px);
+      outline: none;
+    }
+
+    .draggable.tile.dragging {
+      opacity: 0.4;
+      transform: scale(0.95);
+    }
+
+    .draggable.tile.selected-kb {
+      border-color: #ffd700;
+      box-shadow: 0 0 18px rgba(255, 215, 0, 0.5);
+    }
+
+    .draggable.tile.locked {
+      cursor: default;
+      opacity: 0.55;
+      pointer-events: none;
+    }
+
+    /* Tile placed inside a correct slot */
+    .tower-slot.correct .draggable.tile {
+      border-color: #39ff14;
+      background: linear-gradient(135deg, #081e10, #0c3e1e);
+      box-shadow: 0 0 10px rgba(57, 255, 20, 0.2);
+      cursor: default;
+      font-size: 15px;
+      padding: 10px 20px;
+    }
+
+    /* ── Feedback area ── */
+    .feedback-area {
+      min-height: 24px;
+      margin-bottom: 8px;
+      text-align: center;
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 4px;
+      background: rgba(0, 20, 40, 0.45);
+      border: 1px solid rgba(0, 212, 255, 0.12);
+      width: 100%;
+      overflow: hidden;
+      color: #a0b0c0;
+    }
+
+    .feedback-area.feedback-correct {
+      background: rgba(57, 255, 20, 0.08);
+      border-color: rgba(57, 255, 20, 0.3);
+      color: #39ff14;
+    }
+
+    .feedback-area.feedback-incorrect {
+      background: rgba(255, 51, 102, 0.08);
+      border-color: rgba(255, 51, 102, 0.3);
+      color: #ff3366;
+    }
+
+    /* ── Controls ── */
+    .controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .controls .btn,
+    .controls .hint-btn {
+      font-size: 11px;
+      padding: 5px 14px;
+    }
+
+    /* ── Hint text ── */
+    .hint-text {
+      padding: 4px 10px;
+      border-radius: 4px;
+      background: rgba(255, 215, 0, 0.06);
+      border: 1px solid rgba(255, 215, 0, 0.2);
+      text-align: center;
+      font-size: 11px;
+      width: 100%;
+      box-sizing: border-box;
+      color: #ffd700;
+    }
+
+    /* ── Completion banner ── */
+    @keyframes glow-pulse {
+      0%, 100% { text-shadow: 0 0 10px rgba(57, 255, 20, 0.5); }
+      50% { text-shadow: 0 0 25px rgba(57, 255, 20, 0.9), 0 0 40px rgba(57, 255, 20, 0.3); }
+    }
+
+    .complete-banner {
+      display: none;
+      color: #39ff14;
+      font-size: 14px;
+      font-weight: bold;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-top: 6px;
+      padding: 4px 14px;
+      border-radius: 4px;
+      background: rgba(57, 255, 20, 0.06);
+      border: 1px solid rgba(57, 255, 20, 0.25);
+      animation: glow-pulse 1.8s ease-in-out infinite;
+    }
+
+    .complete-banner.show {
+      display: block;
+    }
+
+    /* ── Keyboard instructions ── */
+    .kb-instructions {
+      font-size: 9px;
+      color: #4a6a8a;
+      text-align: center;
+      line-height: 1.5;
+      padding: 4px 8px;
+      border-radius: 4px;
+      background: rgba(0, 20, 40, 0.35);
+      border: 1px solid rgba(0, 212, 255, 0.08);
+      margin-top: 6px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .kb-instructions kbd {
+      display: inline-block;
+      background: rgba(0, 212, 255, 0.1);
+      border: 1px solid rgba(0, 212, 255, 0.25);
+      border-radius: 3px;
+      padding: 0px 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 9px;
+      color: #00d4ff;
+    }
+  </style>
+</head>
+<body>
+  <div class="game-layout">
+
+    <!-- Tower endpoint labels -->
+    <span class="tower-label" id="label-top">User-facing</span>
+    <span class="tower-label" id="label-bottom">Hardware</span>
+
+    <!-- Drop zone slots - positioned over background rectangles -->
+    <div class="tower-slot"
+         id="slot-1"
+         data-slot="1"
+         data-placeholder="[ Slot 1 ]"
+         role="listitem"
+         aria-label="Slot 1, user-facing layer"></div>
+
+    <div class="tower-slot"
+         id="slot-2"
+         data-slot="2"
+         data-placeholder="[ Slot 2 ]"
+         role="listitem"
+         aria-label="Slot 2"></div>
+
+    <div class="tower-slot"
+         id="slot-3"
+         data-slot="3"
+         data-placeholder="[ Slot 3 ]"
+         role="listitem"
+         aria-label="Slot 3"></div>
+
+    <div class="tower-slot"
+         id="slot-4"
+         data-slot="4"
+         data-placeholder="[ Slot 4 ]"
+         role="listitem"
+         aria-label="Slot 4, hardware-facing layer"></div>
+
+    <!-- Components panel (right side) -->
+    <div class="components-panel">
+      <h2>Android Layer Stack</h2>
+      <p class="subtitle">Drag each layer to the left and place it in the correct slot in the stack.</p>
+
+      <p class="pool-label">Components</p>
+      <div class="tile-pool" id="tile-pool" aria-label="Draggable layer tiles"></div>
+
+      <!-- Feedback -->
+      <div class="feedback-area" id="feedback" aria-live="polite"></div>
+
+      <!-- Controls -->
+      <div class="controls">
+        <button class="hint-btn" id="hint-btn" aria-expanded="false">Hint</button>
+        <button class="btn" id="reset-btn">Reset</button>
+      </div>
+      <p class="hint-text" id="hint-text" role="status">Apps sit at the top; the Kernel sits closest to hardware.</p>
+
+      <!-- Completion banner -->
+      <div class="complete-banner" id="complete-banner" role="status">Stack Complete</div>
+
+      <!-- Keyboard instructions -->
+      <p class="kb-instructions">
+        <kbd>Tab</kbd> focus tile &middot; <kbd>Enter</kbd> select<br><br>
+        <kbd>1</kbd>&ndash;<kbd>4</kbd> pick slot &middot;
+        <kbd>Enter</kbd> confirm
+      </p>
+    </div>
+
+  </div>
+
+  <script>
+    /* ── Data ── */
+    const CORRECT_ORDER = {
+      1: "Apps",
+      2: "Application Framework",
+      3: "Android Runtime (ART)",
+      4: "Linux Kernel",
+    };
+
+    const TILE_NAMES = Object.values(CORRECT_ORDER);
+
+    /* ── State ── */
+    let placements = {};
+    let hasWrongDrop = false;
+    let kbSelectedTile = null;
+    let completed = false;
+
+    /* ── DOM refs ── */
+    const pool = document.getElementById("tile-pool");
+    const feedbackEl = document.getElementById("feedback");
+    const hintBtn = document.getElementById("hint-btn");
+    const hintText = document.getElementById("hint-text");
+    const resetBtn = document.getElementById("reset-btn");
+    const completeBanner = document.getElementById("complete-banner");
+    const slots = [1, 2, 3, 4].map((n) => document.getElementById(`slot-${n}`));
+
+    /* ── Helpers ── */
+    function shuffle(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function showFeedback(text, type) {
+      feedbackEl.className = "feedback-area " + (type === "correct" ? "feedback-correct" : "feedback-incorrect");
+      feedbackEl.textContent = text;
+    }
+
+    function clearFeedback() {
+      feedbackEl.className = "feedback-area";
+      feedbackEl.textContent = "";
+    }
+
+    function createTile(name) {
+      const el = document.createElement("div");
+      el.className = "draggable tile fade-in";
+      el.textContent = name;
+      el.draggable = true;
+      el.tabIndex = 0;
+      el.setAttribute("role", "option");
+      el.setAttribute("aria-label", `Layer tile: ${name}`);
+      el.dataset.layer = name;
+
+      el.addEventListener("dragstart", onDragStart);
+      el.addEventListener("dragend", onDragEnd);
+      el.addEventListener("keydown", onTileKeydown);
+
+      return el;
+    }
+
+    function populatePool() {
+      pool.innerHTML = "";
+      const order = shuffle(TILE_NAMES.filter((n) => !Object.values(placements).includes(n)));
+      order.forEach((name) => pool.appendChild(createTile(name)));
+    }
+
+    function returnTileToPool(name) {
+      pool.appendChild(createTile(name));
+    }
+
+    function isSlotLocked(slot) {
+      return slot.classList.contains("correct");
+    }
+
+    function checkComplete() {
+      if (Object.keys(placements).length === 4) {
+        completed = true;
+        completeBanner.classList.add("show");
+        showFeedback("All layers placed correctly!", "correct");
+        Game.sendMessage("layer-stack-complete");
+      }
+    }
+
+    /* ── Placement logic ── */
+    function attemptPlace(slotNum, tileName) {
+      const slot = document.getElementById(`slot-${slotNum}`);
+      if (isSlotLocked(slot)) return;
+
+      if (placements[slotNum]) {
+        const oldName = placements[slotNum];
+        delete placements[slotNum];
+        slot.classList.remove("occupied");
+        slot.innerHTML = "";
+        returnTileToPool(oldName);
+      }
+
+      if (CORRECT_ORDER[slotNum] === tileName) {
+        placements[slotNum] = tileName;
+        slot.classList.add("occupied", "correct");
+
+        const placed = createTile(tileName);
+        placed.draggable = false;
+        placed.classList.add("locked");
+        placed.tabIndex = -1;
+        slot.appendChild(placed);
+
+        removeTileFromPool(tileName);
+        showFeedback(`Correct! ${tileName} is in the right position.`, "correct");
+        checkComplete();
+      } else {
+        hasWrongDrop = true;
+        slot.classList.add("flash-wrong");
+        slot.addEventListener("animationend", () => slot.classList.remove("flash-wrong"), { once: true });
+
+        if (!tileInPool(tileName)) {
+          returnTileToPool(tileName);
+        }
+
+        showFeedback("Try thinking: What talks to hardware drivers?", "incorrect");
+      }
+    }
+
+    function removeTileFromPool(name) {
+      const tiles = pool.querySelectorAll(".tile");
+      tiles.forEach((t) => {
+        if (t.dataset.layer === name) t.remove();
+      });
+    }
+
+    function tileInPool(name) {
+      return !!pool.querySelector(`.tile[data-layer="${CSS.escape(name)}"]`);
+    }
+
+    /* ── Drag-and-drop handlers ── */
+    let draggedName = null;
+
+    function onDragStart(e) {
+      draggedName = e.target.dataset.layer;
+      e.target.classList.add("dragging");
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", draggedName);
+    }
+
+    function onDragEnd(e) {
+      e.target.classList.remove("dragging");
+      draggedName = null;
+    }
+
+    slots.forEach((slot) => {
+      slot.addEventListener("dragover", (e) => {
+        if (isSlotLocked(slot)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        slot.classList.add("drag-over");
+      });
+
+      slot.addEventListener("dragleave", () => {
+        slot.classList.remove("drag-over");
+      });
+
+      slot.addEventListener("drop", (e) => {
+        e.preventDefault();
+        slot.classList.remove("drag-over");
+        const name = e.dataTransfer.getData("text/plain");
+        if (!name) return;
+
+        removeTileFromPool(name);
+        attemptPlace(parseInt(slot.dataset.slot), name);
+      });
+    });
+
+    /* ── Keyboard interaction ── */
+    function clearKbSelection() {
+      if (kbSelectedTile) {
+        kbSelectedTile.classList.remove("selected-kb");
+        kbSelectedTile = null;
+      }
+    }
+
+    function onTileKeydown(e) {
+      const tile = e.currentTarget;
+
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        if (kbSelectedTile === tile) {
+          clearKbSelection();
+          return;
+        }
+        clearKbSelection();
+        kbSelectedTile = tile;
+        tile.classList.add("selected-kb");
+        showFeedback("Tile selected. Press 1-4 to place.", "correct");
+        return;
+      }
+    }
+
+    let kbTargetSlot = null;
+
+    document.addEventListener("keydown", (e) => {
+      if (completed) return;
+      if (!kbSelectedTile) return;
+
+      const num = parseInt(e.key);
+      if (num >= 1 && num <= 4) {
+        e.preventDefault();
+        const name = kbSelectedTile.dataset.layer;
+        removeTileFromPool(name);
+        clearKbSelection();
+        attemptPlace(num, name);
+        return;
+      }
+
+      if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+        e.preventDefault();
+        if (kbTargetSlot === null) {
+          kbTargetSlot = e.key === "ArrowDown" ? 1 : 4;
+        } else {
+          kbTargetSlot += e.key === "ArrowDown" ? 1 : -1;
+          if (kbTargetSlot < 1) kbTargetSlot = 4;
+          if (kbTargetSlot > 4) kbTargetSlot = 1;
+        }
+        slots.forEach((s) => s.classList.remove("drag-over"));
+        const target = document.getElementById(`slot-${kbTargetSlot}`);
+        if (!isSlotLocked(target)) target.classList.add("drag-over");
+        showFeedback(`Targeting Slot ${kbTargetSlot}. Press Enter to drop.`, "correct");
+        return;
+      }
+
+      if (e.key === "Enter" && kbTargetSlot !== null) {
+        e.preventDefault();
+        slots.forEach((s) => s.classList.remove("drag-over"));
+        const name = kbSelectedTile.dataset.layer;
+        removeTileFromPool(name);
+        clearKbSelection();
+        attemptPlace(kbTargetSlot, name);
+        kbTargetSlot = null;
+        return;
+      }
+
+      if (e.key === "Escape") {
+        e.preventDefault();
+        slots.forEach((s) => s.classList.remove("drag-over"));
+        clearKbSelection();
+        kbTargetSlot = null;
+        clearFeedback();
+      }
+    });
+
+    /* ── Hint button ── */
+    hintBtn.addEventListener("click", () => {
+      const showing = hintText.classList.toggle("visible");
+      hintBtn.setAttribute("aria-expanded", showing);
+    });
+
+    /* ── Reset button ── */
+    resetBtn.addEventListener("click", () => {
+      if (completed) {
+        completeBanner.classList.remove("show");
+        completed = false;
+      }
+      placements = {};
+      hasWrongDrop = false;
+      kbTargetSlot = null;
+      clearKbSelection();
+      clearFeedback();
+      slots.forEach((slot) => {
+        slot.innerHTML = "";
+        slot.className = "tower-slot";
+      });
+      populatePool();
+    });
+
+    /* ── Init ── */
+    populatePool();
+
+    /* ── Messaging API ── */
+    const Events = {
+      handlers: {},
+      init() {
+        window.addEventListener("message", (event) => {
+          if (event.origin !== window.location.origin) return;
+          if (event.data.type !== "renjs-event") return;
+          const { id, args, scope } = event.data;
+          (this.handlers[id] || []).forEach((fn) => fn.apply(scope, args));
+        });
+      },
+      on(id, fn) {
+        this.handlers[id] = this.handlers[id] || [];
+        this.handlers[id].push(fn);
+        this.init();
+      },
+    };
+
+    const Game = {
+      Events,
+      onMessage(id, fn) { Events.on(id, fn); },
+      sendMessage(id, args = [], scope = {}) {
+        window.parent.postMessage({ type: "renjs-event", id, args, scope }, window.location.origin);
+      },
+    };
+  </script>
+</body>
+</html>

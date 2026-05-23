@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+
+		<title>Shell</title>
+
+		<link rel="stylesheet" href="https://unpkg.com/xterm@4.19.0/css/xterm.css" integrity="sha384-CAUJ9lBaihiKDjVUl2YiWXGJPJ9WjsWZlyqblkhJU3lFzIQb368x0Ns1jDFrFJrW" crossorigin="anonymous">
+
+		<style type="text/css">
+			html, body {
+				margin: 0;
+				padding: 0;
+				background: #000000;
+			}
+			#terminal {
+				position: fixed;
+				top: 0px;
+				left: 0px;
+				right: 0px;
+				bottom: 0px;
+				background: #000000;
+				z-index: 1;
+			}
+
+			#loading {
+				position: fixed;
+				top: 0px;
+				left: 0px;
+				right: 0px;
+				bottom: 0px;
+				background: rgba(0,0,0,0.5);
+				z-index: 2;
+				color: #ffffff;
+			}
+			.loading-dual-ring {
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				width: 92px;
+				height: 92px;
+				margin-top: -46px;
+				margin-left: -46px;
+			}
+			.loading-dual-ring:after {
+				content: " ";
+				display: block;
+				width: 64px;
+				height: 64px;
+				margin: 8px;
+				border-radius: 50%;
+				border: 6px solid #fff;
+				border-color: #fff transparent #fff transparent;
+				animation: loading-dual-ring 1.2s linear infinite;
+			}
+			@keyframes loading-dual-ring {
+				0% {
+					transform: rotate(0deg);
+				}
+				100% {
+					transform: rotate(360deg);
+				}
+			}
+
+			#error {
+				position: fixed;
+				top: 0px;
+				left: 0px;
+				right: 0px;
+				bottom: 0px;
+				background: rgba(0,0,0,0.5);
+				z-index: 2;
+				color: #ffffff;
+				display: none;
+			}
+			#error-message {
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				width: 600px;
+				height: 32px;
+				margin-top: -16px;
+				margin-left: -300px;
+				text-align: center;
+				font-size: 32px;
+				color: #ff8080;
+			}
+
+			/* width */
+			::-webkit-scrollbar {
+				width: 11px;
+			}
+
+			/* Track */
+			::-webkit-scrollbar-track {
+				background: #242424;
+			}
+
+			/* Handle */
+			::-webkit-scrollbar-thumb {
+				background: #545454;
+			}
+
+			/* Handle on hover */
+			::-webkit-scrollbar-thumb:hover {
+				background: #747474;
+			}
+		</style>
+
+	</head>
+	<body>
+		<div id="loading">
+			<div class="loading-dual-ring"></div>
+		</div>
+		<div id="error">
+			<div id="error-message"></div>
+		</div>
+		<div id="terminal"></div>
+
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js" integrity="sha512-HTENHrkQ/P0NGDFd5nk6ibVtCkcM7jhr2c7GyvXp5O+4X6O5cQO9AhqFzM+MdeBivsX7Hoys2J7pp2wdgMpCvw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+		<script src="https://unpkg.com/xterm@4.19.0/lib/xterm.js" integrity="sha384-VzFUSUDGAYS5h/IALuEgju13+zcJCeadYV17QQl+Bj3a3sqSkBkshRJpFaVW4RQr" crossorigin="anonymous"></script>
+		<script src="https://unpkg.com/xterm-addon-fit@0.5.0/lib/xterm-addon-fit.js" integrity="sha384-1z99Fy30h75RY/s/rPkqfN8NKmcrhr8zp01wGxbsfNGuiz2rCq8N4eFPwDid4IWj" crossorigin="anonymous"></script>
+
+		<script>
+			let loading = {
+				element : document.getElementById('loading'),
+				enable : function () {
+					this.element.style.display = 'block';
+				},
+				disable : function () {
+					this.element.style.display = 'none';
+				}
+			};
+			let error = {
+				element : document.getElementById('error'),
+				message : document.getElementById('error-message'),
+				enable : function (message) {
+					this.message.textContent = message;
+					this.element.style.display = 'block';
+				},
+				disable : function () {
+					this.element.style.display = 'none';
+					this.message.textContent = '';
+				}
+			};
+
+			let term = {
+				init : function() {
+					// Create terminal
+					this.xterm = new Terminal({ cursorBlink : true });
+					
+					// Load addons
+					let addon_fit = new FitAddon.FitAddon();
+					this.xterm.loadAddon(addon_fit);
+
+					// Open terminal
+					this.element = document.querySelector('#terminal');
+					this.xterm.open(this.element);
+
+					// Load addons
+					addon_fit.fit();
+
+					// Handle data input
+					this.xterm.onData((input) => {
+						return this.onInput(input);
+					});
+
+					// Handle pasting
+					this._cache_paste_timeout = new Date().getTime();
+					this.xterm.attachCustomKeyEventHandler(e => {
+						return this.keyHandler(e, event);
+					});
+					this.element.addEventListener('contextmenu', (e) => {
+						return this.rightClickHandler(e, event);
+					});
+
+					// this.xterm.focus();
+				},
+				
+				log : function(level) {
+					console.log('[Terminal]', ... arguments.splice(1));
+				},
+
+				getSize : function() {
+					return [this.xterm.cols, this.xterm.rows];
+				},
+
+				write : function(input) {
+					this.xterm.write(input);
+				},
+
+				onInput : function(input) {
+					if (!this.socket_object) return;
+					// Send (input) to socket;
+					this.socket_object.send(input);
+				},
+
+				setSocket : function(sock) {
+					this.socket_object = sock;
+				},
+
+				keyHandler : function(e, event) {
+					if (e.key === 'V' && e.ctrlKey && e.shiftKey) {
+						if (new Date().getTime() - this._cache_paste_timeout > 500) {
+							this._cache_paste_timeout = new Date().getTime();
+							navigator.clipboard.readText()
+							.then(text => {
+								this.onInput(text);
+							})
+							.catch(err => {
+								this.log('DEBUG', 'Failed to read clipboard contents: ', err);
+							});
+						}
+						event.preventDefault();
+						return false;
+					}
+					if (e.key === 'C' && e.ctrlKey && e.shiftKey) {
+						if (this.xterm.hasSelection()) {
+							document.execCommand('copy');
+							this.xterm.select(0, 0, 0);
+						}
+						event.preventDefault();
+						return false;
+					}
+				},
+
+				rightClickHandler : function(e, event) {
+					if (this.xterm.hasSelection()) {
+						document.execCommand('copy');
+						this.xterm.select(0, 0, 0);
+						event.preventDefault();
+						return false;
+					}
+					else {
+						navigator.clipboard.readText()
+						.then(text => {
+							this.onInput(text);
+						})
+						.catch(err => {
+							console.error('Failed to read clipboard contents: ', err);
+						});
+						event.preventDefault();
+						return false;
+					}
+				},
+
+				dispose : function() {
+					this.xterm.dispose();
+				}
+			};
+
+			let socket_io = {
+				init : function(session) {
+					let url =
+						(session.protocol || 'ws') + '://' +
+						(session.host || 'localhost') + ':' +
+						(session.port || '3000') +
+						(session.path || '');
+					this.connected = false;
+					this.socket = window.io(url);
+					this.command = session.cmd;
+
+					this.socket.on('connect', () => {
+						this.connected = true;
+						loading.disable();
+						
+						if (this.command){
+							setTimeout(() => {
+								this.send(this.command + '\n');
+							}, 0);
+						}
+
+						//console.log('Connected');
+						//term.write('Connected!\n');
+
+						this.socket.emit('authenticate', {
+							'username': 'admin',
+							'password': 'admin'
+						});
+
+						this.socket.emit('resize', term.getSize());
+
+						this.socket.on('data', (data) => {
+							term.write(data);
+						});
+
+						this.socket.on('disconnect', () => {
+							this.connected = false;
+							term.dispose();
+							loading.enable();
+							//console.log('Disconnected');
+							//term.write('Disconnected\n');
+						});
+
+					});
+				},
+
+				send : function(data) {
+					if (!this.connected) return;
+					this.socket.emit('data', data);
+				}
+			};
+
+			let socket_raw = {
+				init : function(session) {
+					let url =
+						(session.protocol || 'ws') + '://' +
+						(session.host || 'localhost') + ':' +
+						(session.port || '3000') +
+						(session.path || '');
+
+					this.connected = false;
+					this.socket = new window.WebSocket(url);
+					this.command = session.cmd;
+
+					this.socket.onopen = () => {
+						this.connected = true;
+						loading.disable();
+						
+						if (this.command){
+							setTimeout(() => {
+								this.send(this.command + '\n');
+							}, 0);
+						}
+					};
+
+					this.socket.onmessage = function(msg) {
+						let reader = new window.FileReader();
+						if (!window.TextDecoder) {
+							reader.onload = () => {
+								term.write(reader.result);
+							};
+							//reader.onerror = function (e) {
+							//	console.error(e);
+							//};
+							reader.readAsText(msg.data, 'utf-8');
+						}
+						else {
+							reader.onload = function() {
+								var text;
+								try {
+									text = (new window.TextDecoder('utf-8')).decode(reader.result);
+								}
+								catch (TypeError) {
+									//console.log('Decoding error happened.');
+								}
+								finally {
+									term.write(text);
+								}
+							};
+							//reader.onerror = function (e) {
+							//	console.error(e);
+							//};
+							reader.readAsArrayBuffer(msg.data);
+						}
+					};
+					
+					this.socket.onerror = (e) => {
+						//console.error(e);
+						loading.disable();
+						error.enable('Failed to connect to the remote shell.');
+						console.error('onerror', e);
+					};
+
+					this.socket.onclose = (e) => {
+						this.connected = false;
+						//loading.enable();
+						term.dispose();
+						console.error('onclose', e);
+						// e.reason
+					};
+				},
+
+				send : function(data) {
+					if (!this.connected) return;
+					this.socket.send(JSON.stringify({'data': data}));
+				}
+			};
+
+
+			(() => {
+				// Show loading
+				loading.enable();
+
+				// Get info from URL
+				let params = new URLSearchParams(window.location.search);
+
+				// Loading or Error action
+				if (params.get('loading') || false) {
+					console.log('[WebShell] Just show loading.');
+					return;
+				}
+				else if (params.get('error') || false) {
+					loading.disable();
+					error.enable(params.get('error'));
+					console.log('[WebShell] Error:', params.get('error'));
+					return;
+				}
+
+				// If a session was given
+				let session = params.get('session') || false;
+				if (session) {
+					// Try to decode the session
+					try {
+						session = JSON.parse(atob(session));
+					}
+					catch (e) {
+						console.error('[WebShell] Invalid session data.');
+						return;
+					}
+				}
+				else {
+					session = {
+						protocol : params.get('protocol'),
+						host : params.get('host'),
+						port : params.get('port'),
+						type : params.get('type'),
+						path : params.get('path'),
+						cmd : params.get('cmd')
+					}
+				}
+
+				// Default params
+				session.protocol = session.protocol || 'ws';
+				session.host = session.host || 'localhost';
+				session.port = session.port || 3000;
+				session.type = session.type.toLowerCase() || 'socket.io';
+				session.path = session.path || '';
+				session.cmd = session.cmd || '';
+
+				// Select socket type
+				let sock = null;
+				if (session.type == 'raw') {
+					sock = socket_raw;
+				}
+				else if (session.type == 'socket.io') {
+					sock = socket_io;
+				}
+				else {
+					console.error('[WebShell] Uknown socket type.');
+					return;
+				}
+
+				// Connect Terminal
+				term.init();
+				term.setSocket(sock);
+				sock.init(session);
+			})();
+		</script>
+
+	</body>
+</html>

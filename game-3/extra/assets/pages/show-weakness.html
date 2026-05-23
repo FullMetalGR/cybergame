@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="cybergame-common.css">
+<style>
+  html, body { background: transparent; overflow: hidden; }
+  .container { justify-content: center; align-items: center; }
+  .branded-panel {
+    background: rgba(6, 10, 20, 0.88);
+    border: 1px solid rgba(255, 51, 102, 0.4);
+    border-radius: 8px;
+    padding: 18px 28px;
+    box-shadow: 0 0 24px rgba(255, 51, 102, 0.15);
+    display: flex; flex-direction: column; align-items: center;
+    gap: 14px; max-width: 900px; width: 96%;
+  }
+  .title { font-size: 20px; color: #ff3366; text-transform: uppercase; letter-spacing: 3px; }
+  .subtitle { font-size: 13px; color: rgba(224,230,240,0.65); text-align: center; }
+  .door {
+    width: 240px; height: 200px; border-radius: 10px;
+    border: 2px solid #ff3366; background: rgba(255,51,102,0.06);
+    box-shadow: 0 0 24px rgba(255,51,102,0.25), inset 0 0 20px rgba(255,51,102,0.05);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    color: #ff3366; gap: 8px;
+    position: relative;
+  }
+  .door::before {
+    content: ""; position: absolute; top: 12px; left: 12px; right: 12px; bottom: 12px;
+    border: 1px dashed rgba(255,51,102,0.4); border-radius: 6px;
+  }
+  .door-label { font-size: 18px; letter-spacing: 2px; text-transform: uppercase; }
+  .door-state { font-size: 13px; color: #ffaa3c; }
+  .reveal-btn { margin: 8px 0; }
+  .flags { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 720px; }
+  .flag {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px; border-radius: 6px;
+    background: rgba(255,51,102,0.06); border: 1px solid rgba(255,51,102,0.25);
+    opacity: 0; transform: translateX(-12px); transition: all 0.4s ease;
+  }
+  .flag.show { opacity: 1; transform: translateX(0); }
+  .flag-icon {
+    width: 28px; height: 28px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: #ff3366;
+  }
+  .flag-icon svg { width: 24px; height: 24px; stroke: #ff3366; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .flag-icon svg .filled { fill: rgba(255,51,102,0.15); }
+  .flag-text { flex: 1; font-size: 13px; color: #e0e6f0; }
+  .flag-tip {
+    font-size: 12px; color: rgba(224,230,240,0.6); margin-top: 4px;
+    display: none;
+  }
+  .flag.expanded .flag-tip { display: block; }
+  .flag-toggle {
+    border: 1px solid rgba(0,212,255,0.4); color: #00d4ff; background: transparent;
+    padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; text-transform: uppercase;
+  }
+  .flag-toggle:hover { background: rgba(0,212,255,0.1); }
+  .continue-btn { opacity: 0; pointer-events: none; transition: opacity 0.4s ease; }
+  .continue-btn.visible { opacity: 1; pointer-events: auto; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="branded-panel">
+    <div class="title">Exposed Component</div>
+    <div class="subtitle">ProfileActivity is reachable from outside. Click "Show Weakness" to identify what makes it risky.</div>
+
+    <div class="door" aria-label="ProfileActivity door — Exported YES">
+      <div class="door-label">ProfileActivity</div>
+      <div class="door-state">Exported: YES</div>
+    </div>
+
+    <button class="btn btn-warning reveal-btn" id="showBtn">Show Weakness</button>
+
+    <div class="flags" id="flags"></div>
+
+    <button class="btn btn-success continue-btn" id="continueBtn">Continue</button>
+  </div>
+</div>
+<script>
+const ICON_DOOR = `<svg viewBox="0 0 24 24" aria-hidden="true"><path class="filled" d="M4 21 L4 4 L14 4 L14 21 Z"/><path d="M14 4 L20 7 L20 18 L14 21"/><circle cx="17" cy="13" r="0.7" fill="#ff3366" stroke="none"/></svg>`;
+const ICON_UNLOCK = `<svg viewBox="0 0 24 24" aria-hidden="true"><rect class="filled" x="5" y="11" width="14" height="10" rx="1.5"/><path d="M9 11 L9 7 A 3.5 3.5 0 0 1 16.5 6"/><circle cx="12" cy="15.5" r="1.1" fill="#ff3366" stroke="none"/><line x1="12" y1="16.4" x2="12" y2="18.5"/></svg>`;
+const ICON_DOC = `<svg viewBox="0 0 24 24" aria-hidden="true"><path class="filled" d="M6 3 L15 3 L19 7 L19 21 L6 21 Z"/><path d="M15 3 L15 7 L19 7"/><line x1="9" y1="11" x2="16" y2="11"/><line x1="9" y1="14" x2="16" y2="14"/><line x1="9" y1="17" x2="13" y2="17"/></svg>`;
+
+const weaknesses = [
+  { icon: ICON_DOOR,   text: "Exported enabled", tip: "Any app on the device can target this component, including hostile ones." },
+  { icon: ICON_UNLOCK, text: "No authentication check", tip: "Component performs sensitive work without verifying the caller has permission." },
+  { icon: ICON_DOC,    text: "Sensitive data displayed / retrieved", tip: "Activity loads private user info or session data on launch — visible to any caller." }
+];
+
+const flagsEl = document.getElementById("flags");
+const showBtn = document.getElementById("showBtn");
+const continueBtn = document.getElementById("continueBtn");
+let shown = false;
+let done = false;
+
+function reveal() {
+  if (shown) return;
+  shown = true;
+  showBtn.disabled = true;
+  weaknesses.forEach((w, i) => {
+    const flag = document.createElement("div");
+    flag.className = "flag";
+    flag.setAttribute("role", "group");
+    flag.innerHTML = `
+      <div class="flag-icon" aria-hidden="true">${w.icon}</div>
+      <div style="flex:1">
+        <div class="flag-text">${w.text}</div>
+        <div class="flag-tip">${w.tip}</div>
+      </div>
+      <button class="flag-toggle" aria-label="Toggle explanation">Explain</button>
+    `;
+    const toggle = flag.querySelector(".flag-toggle");
+    toggle.addEventListener("click", () => flag.classList.toggle("expanded"));
+    flagsEl.appendChild(flag);
+    setTimeout(() => flag.classList.add("show"), 200 + i * 200);
+  });
+  setTimeout(() => {
+    continueBtn.classList.add("visible");
+    continueBtn.focus();
+  }, 200 + weaknesses.length * 200 + 400);
+}
+
+showBtn.addEventListener("click", reveal);
+continueBtn.addEventListener("click", () => {
+  if (done) return; done = true;
+  try { window.parent.postMessage({ type: "renjs-event", id: "show-weakness-complete" }, "*"); } catch(e) {}
+});
+
+window.addEventListener("load", () => { window.focus(); showBtn.focus(); });
+</script>
+</body>
+</html>

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="cybergame-common.css">
+<style>
+  html, body { background: transparent; overflow: hidden; }
+  .container { justify-content: center; align-items: center; }
+  .branded-panel {
+    background: rgba(6, 10, 20, 0.85);
+    border: 1px solid rgba(0, 212, 255, 0.5);
+    border-radius: 8px;
+    padding: 18px 24px;
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.15), inset 0 0 30px rgba(0, 212, 255, 0.03);
+    display: flex; flex-direction: column; align-items: center;
+    gap: 12px; max-width: 700px; width: 96%;
+  }
+  .title { font-size: 20px; color: #00d4ff; text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 0 10px rgba(0, 212, 255, 0.5); margin-bottom: 6px; }
+  .subtitle { font-size: 13px; color: rgba(0, 212, 255, 0.6); letter-spacing: 1px; }
+
+  .log-list {
+    display: flex; flex-direction: column; gap: 8px;
+    width: 100%; max-width: 640px;
+  }
+
+  .log-entry {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px; border-radius: 6px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(0,212,255,0.15);
+    border-left: 3px solid rgba(224,230,240,0.3);
+    transition: all 0.3s ease;
+  }
+
+  .log-text {
+    flex: 1; font-family: 'Courier New', monospace; font-size: 14px; color: #e0e6f0;
+  }
+  .log-text .log-val { color: #e0e6f0; }
+
+  .log-btns { display: flex; gap: 6px; flex-shrink: 0; }
+  .log-btn {
+    padding: 6px 12px; border-radius: 4px; cursor: pointer;
+    font-family: 'Courier New', monospace; font-size: 12px;
+    border: 1px solid; transition: all 0.2s ease; background: transparent;
+    text-transform: uppercase;
+  }
+  .log-btn.sens { color: #ff3366; border-color: rgba(255,51,102,0.4); }
+  .log-btn.sens:hover { background: rgba(255,51,102,0.1); }
+  .log-btn.nonsens { color: #39ff14; border-color: rgba(57,255,20,0.4); }
+  .log-btn.nonsens:hover { background: rgba(57,255,20,0.1); }
+  .log-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .log-result {
+    font-size: 12px; margin-top: 4px; padding: 4px 8px; border-radius: 4px;
+    display: none;
+  }
+  .log-result.show { display: block; }
+  .log-result.correct { color: #39ff14; background: rgba(57,255,20,0.05); }
+  .log-result.incorrect { color: #ff3366; background: rgba(255,51,102,0.05); }
+
+  .log-entry.resolved { opacity: 0.7; }
+  .log-entry.resolved.was-correct { border-color: rgba(57,255,20,0.3); }
+  .log-entry.resolved.was-incorrect { border-color: rgba(255,51,102,0.3); }
+
+  .progress-text { font-size: 14px; color: rgba(224,230,240,0.5); }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="branded-panel">
+  <div class="title">Log Stream Classification</div>
+  <div class="subtitle">Classify each log line as Sensitive or Non-sensitive before proceeding</div>
+
+  <div class="log-list" id="logList"></div>
+  <div class="progress-text" id="progressText">0 / 6 classified</div>
+  </div>
+</div>
+
+<script>
+const logs = [
+  {
+    text: 'password=<span class="log-val">Secr3t!</span>',
+    sensitive: true,
+    reason: "Passwords must never appear in logs."
+  },
+  {
+    text: 'token=<span class="log-val">ABCD-1234</span>',
+    sensitive: true,
+    reason: "Session tokens can be hijacked if leaked."
+  },
+  {
+    text: 'email=<span class="log-val">alex@example.com</span>',
+    sensitive: true,
+    reason: "Email addresses are personally identifiable information (PII)."
+  },
+  {
+    text: 'app_version=<span class="log-val">2.3.1</span>',
+    sensitive: false,
+    reason: "Version info is non-sensitive metadata."
+  },
+  {
+    text: 'sync_status=<span class="log-val">success</span>',
+    sensitive: false,
+    reason: "Sync status is operational data, not personal."
+  },
+  {
+    text: 'user_id=<span class="log-val">usr_4892</span>',
+    sensitive: false,
+    reason: "Internal IDs are non-sensitive identifiers, not PII."
+  }
+];
+
+// Shuffle so sensitive/non-sensitive aren't grouped
+const shuffledLogs = [...logs].sort(() => Math.random() - 0.5);
+
+const logList = document.getElementById("logList");
+const progressText = document.getElementById("progressText");
+let classified = 0;
+
+shuffledLogs.forEach((log, i) => {
+  const entry = document.createElement("div");
+  entry.className = "log-entry";
+  entry.innerHTML = `
+    <div class="log-text">${log.text}</div>
+    <div class="log-btns">
+      <button class="log-btn sens" data-choice="sensitive">Sensitive</button>
+      <button class="log-btn nonsens" data-choice="nonsensitive">Non-sensitive</button>
+    </div>
+    <div class="log-result" id="result-${i}"></div>
+  `;
+
+  entry.querySelectorAll(".log-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const choice = btn.dataset.choice;
+      const isCorrect = (choice === "sensitive") === log.sensitive;
+      const result = entry.querySelector(`#result-${i}`);
+
+      entry.querySelectorAll(".log-btn").forEach(b => b.disabled = true);
+      entry.classList.add("resolved");
+      result.classList.add("show");
+
+      if (isCorrect) {
+        entry.classList.add("was-correct");
+        result.classList.add("correct");
+        result.textContent = `Correct — ${log.reason}`;
+      } else {
+        entry.classList.add("was-incorrect");
+        result.classList.add("incorrect");
+        const correctLabel = log.sensitive ? "Sensitive" : "Non-sensitive";
+        result.textContent = `${correctLabel} — ${log.reason}`;
+      }
+
+      classified++;
+      progressText.textContent = `${classified} / ${logs.length} classified`;
+
+      if (classified === logs.length) {
+        setTimeout(() => {
+          try { window.parent.postMessage({ type: "renjs-event", id: "log-classifier-complete" }, "*"); } catch(e) {}
+        }, 1500);
+      }
+    });
+  });
+
+  logList.appendChild(entry);
+});
+
+window.addEventListener("load", () => window.focus());
+</script>
+</body>
+</html>

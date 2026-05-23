@@ -1,0 +1,496 @@
+####################################################################################################
+#                                                                                                  #
+#           SCENARIO 3: SHADOW APP INCIDENT - ANDROID ATTACK SIMULATION                            #
+#                                                                                                  #
+####################################################################################################
+
+start:
+  - call ProgressBar: LOAD
+    steps: 10
+    step: 1
+  - call ProgressBar: SHOW
+  - show bg_bridgealert: WITH FADE
+  # Narrative intro
+  - call CustomText: "Night cycle on the orbital city Vanta Ring. Sirens. Holographic billboards flicker. Inside the Lumen Drift, the Defence Console flashes: INTRUSION DETECTED."
+  # Characters
+  - show android: alert AT CENTER WITH FADE
+  - show ker: concerned AT LEFT WITH FADE
+  # Dialogue
+  - ker says: "Wake up! Now! Something just pinged our app stack."
+  - android says: "Alert received. Threat classification: unknown. Severity: escalating."
+  - ker says: "This is the real test. A hostile app, something like a (bold)Shadow App(end), is trying to trigger our components."
+  - android says: "Define Shadow App."
+  - ker says: "A Shadow App is a malicious application installed on the same device. It doesn't break encryption or crack passwords — it abuses exposed components."
+  - ker says: "If one of our app's components is reachable from outside, the Shadow App can send it crafted requests and access data or trigger actions it was never supposed to reach."
+  - android says: "Objective: detect, contain, recover."
+  - show ker: explaining AT LEFT WITH CUT
+  - ker says: "Exactly. You'll run a full incident simulation. By the end you'll detect and prioritize a privacy-impacting alert, then contain an incident by closing component exposure."
+  - ker says: "You'll also identify and eliminate sensitive logging, apply token revocation and recovery steps, and ship a secure-by-default patch plan."
+  # Side Panels
+  - call SidePanel:
+    dontwait: true
+    content:
+      - type: h4
+        html: <i class="fa-solid fa-triangle-exclamation"></i> What is an "Incident"
+      - type: p
+        md: "A security incident is an event that threatens **confidentiality** (privacy), **integrity** (data correctness), or **availability** (service uptime)."
+      - type: p
+        md: "In this scenario, you will practice a simple incident loop:"
+      - type: p
+        md: "**Detect** — spot what's wrong."
+      - type: p
+        md: "**Contain** — stop it spreading."
+      - type: p
+        md: "**Eradicate** — fix root cause."
+      - type: p
+        md: "**Recover** — restore safe operation."
+      - type: p
+        md: "**Learn** — prevent recurrence."
+  - call SidePanelTips:
+    dontwait: true
+    content:
+      - type: h4
+        html: <i class="fa-solid fa-lightbulb"></i> Tips & Tricks
+      - type: p
+        md: "Read every alert. The first signal that looks like noise is often the breach."
+      - type: p
+        md: "Containment beats investigation when private data is at risk — close the door first."
+      - type: p
+        md: "Score bonuses for early containment and fewer hints used."
+  # Switch to a tighter Defence Console view for the beacon interaction
+  - hide ALL:
+  - show bg_intrusion: WITH FADE
+  # Intrusion beacon interaction
+  - call Website: LOAD
+    browser: noframe
+    url: "assets/pages/intrusion-beacon.html"
+    width: 1280
+    height: 720
+  - call Website: SHOW
+  - call WaitEvent: intrusion-beacon-complete
+  - call Website: HIDE
+  - hide ALL:
+  - scene: scene_1
+
+####################################################################################################
+# Scene 1: Theory - The Attack Chain
+####################################################################################################
+scene_1:
+  - call ProgressBar: STEP
+    step: 2
+  - show bg_attackchain: WITH FADE
+  - show ker: explaining AT LEFT WITH CUT
+  - show android: scanning AT RIGHT WITH CUT
+  # Dialogue
+  - ker says: "Think like a defender. Attacks often follow a path."
+  - android says: "Define the path."
+  - ker says: "Here's a simplified chain. (bold)Entry(end): attacker gets a foothold — a malicious app installed, or a risky component exposed."
+  - ker says: "(bold)Trigger(end): attacker sends a crafted request, like an Intent."
+  - ker says: "(bold)Access(end): attacker reaches data or actions they shouldn't."
+  - ker says: "(bold)Exfiltration(end): attacker extracts something valuable — tokens, personal data."
+  - ker says: "(bold)Persistence(end): attacker makes it repeatable."
+  - android says: "We must break the chain early."
+  - ker says: "Exactly. The earlier you stop it, the less damage."
+  # Side Panel
+  - call SidePanel:
+    dontwait: true
+    content:
+      - type: h4
+        html: <i class="fa-solid fa-book"></i> Key Definitions
+      - type: p
+        md: "**Vulnerability:** a weakness (e.g., exported component without checks)."
+      - type: p
+        md: "**Exploit:** a method that uses a vulnerability to cause harm."
+      - type: p
+        md: "**Mitigation:** a control that reduces risk (e.g., require login, not exported, validate caller)."
+      - type: p
+        md: "**Intent Spoofing:** a malicious app sends an Intent to a component that trusts requests too easily."
+  # Attack chain interaction
+  - call Website: LOAD
+    browser: noframe
+    url: "assets/pages/attack-chain.html"
+    width: 1280
+    height: 720
+  - call Website: SHOW
+  - call WaitEvent: attack-chain-complete
+  - call Website: HIDE
+  - hide ALL:
+  - scene: scene_2
+
+####################################################################################################
+# Scene 2: Practice - Triage the Alerts (MCQ)
+####################################################################################################
+scene_2:
+  - call ProgressBar: STEP
+    step: 3
+  - show bg_triagedash: WITH FADE
+  - show ker: thinking AT LEFT WITH CUT
+  - show android: alert AT RIGHT WITH CUT
+  # Dialogue
+  - ker says: "Pick the real threat signal. Don't chase noise."
+  - android says: "Prioritize by impact and likelihood."
+  # Side Panel
+  - call SidePanel:
+    dontwait: true
+    content:
+      - type: h4
+        html: <i class="fa-solid fa-bell"></i> Why the Right Alert Matters
+      - type: p
+        md: "A private screen (like Profile) being opened externally suggests **component exposure**."
+      - type: p
+        md: "If that screen loads user info or tokens without proper checks, it can leak data."
+      - type: p
+        md: "Availability and UI issues are important — but privacy alarms take priority here."
+  # Triage interaction
+  - call Website: LOAD
+    browser: noframe
+    url: "assets/pages/triage-alerts.html"
+    width: 1280
+    height: 720
+  - call Website: SHOW
+  - call WaitEvent: triage-alerts-complete
+  - call Website: HIDE
+  - hide ALL:
+  - scene: scene_3
+
+####################################################################################################
+# Scene 3: Theory - The Exposed Component
+####################################################################################################
+scene_3:
+  - call ProgressBar: STEP
+    step: 4
+  - show bg_corridor: WITH FADE
+  - show ker: explaining AT LEFT WITH CUT
+  - show android: scanning AT RIGHT WITH CUT
+  # Dialogue
+  - ker says: "Here's the weakness. ProfileActivity is reachable from outside."
+  - android says: "But why is that dangerous if it's just a screen?"
+  - ker says: "Because screens often fetch sensitive data — user details, session state, maybe tokens. If the Activity trusts the caller, a hostile app can trigger it at will."
+  - android says: "So the attacker doesn't need to break cryptography — only to abuse exposure."
+  - ker says: "Exactly. Security failures are often design failures."
+  # Side Panel
+  - call SidePanel:
+    dontwait: true
+    content:
+      - type: h4
+        html: <i class="fa-solid fa-door-open"></i> Controlled Exposure Refresher
+      - type: p
+        md: "If a component is exported, other apps may be able to start it."
+      - type: p
+        md: "If it performs sensitive actions, it must enforce checks (e.g., user logged in, request is expected, minimal data exposure)."
+      - type: p
+        md: "**Best default:** not exported unless there is a clear external use case."
+  # Show weakness interaction
+  - call Website: LOAD
+    browser: noframe
+    url: "assets/pages/show-weakness.html"
+    width: 1280
+    height: 720
+  - call Website: SHOW
+  - call WaitEvent: show-weakness-complete
+  - call Website: HIDE
+  - hide ALL:
+  - scene: scene_4
+
+####################################################################################################
+# Scene 4: Practice - Containment Lockdown
+####################################################################################################
+scene_4:
+  - call ProgressBar: STEP
+    step: 5
+  - show bg_securitygate: WITH FADE
+  - show ker: concerned AT LEFT WITH CUT
+  - show android: alert AT RIGHT WITH CUT
+  # Dialogue
+  - ker says: "Containment phase. Stop the hostile triggers now."
+  - android says: "Applying defensive configuration. Goal: reduce attack surface immediately."
+  - ker says: "Three components. Three toggles each: Exported, Requires Login, Accepts External Intents."
+  - ker says: "Configure them so private data is protected, legitimate sharing still works, and background sync remains internal."
+  - ker says: "Apply Lockdown before the Hostile Requests counter reaches the red zone."
+  # Side Panel
+  - call SidePanel:
+    dontwait: true
+    content:
+      - type: h4
+        html: <i class="fa-solid fa-lock"></i> Containment
+      - type: p
+        md: "Containment means limiting ongoing damage quickly, even before you fully understand the attacker."
+      - type: p
+        md: "In real incidents, you might temporarily disable risky features to protect users."
+  - call SidePanelTips:
+    dontwait: true
+    content:
+      - type: h4
+        html: <i class="fa-solid fa-lightbulb"></i> Lockdown Hints
+      - type: p
+        md: "**ProfileActivity** — private data → exported OFF, login required."
+      - type: p
+        md: "**ShareActivity** — designed for external interaction → exported ON, accepts intents."
+      - type: p
+        md: "**SyncService** — internal maintenance → never exported."
+  # Lockdown room interaction
+  - call Website: LOAD
+    browser: noframe
+    url: "assets/pages/lockdown-room.html"
+    width: 1280
+    height: 720
+  - call Website: SHOW
+  - call WaitEvent: lockdown-room-complete
+  - call Website: HIDE
+  - hide ALL:
+  - scene: scene_5
+
+####################################################################################################
+# Scene 5: Practice - Log Evidence Review (DnD + Micro-Interaction Gate)
+####################################################################################################
+scene_5:
+  - call ProgressBar: STEP
+    step: 6
+  - show bg_logstream: WITH FADE
+  - show ker: thinking AT LEFT WITH CUT
+  - show android: scanning AT RIGHT WITH CUT
+  # Dialogue
+  - ker says: "Containment helped. Now — evidence. Check logs for leaks."
+  - android says: "Objective: identify sensitive disclosures."
+  - ker says: "Drag each log line into SAFE TO LOG or SENSITIVE — REMOVE/REDACT. Anything that can authenticate or directly identify a person should be redacted."
+  # Side Panel
+  - call SidePanel:
+    dontwait: true
+    content:
+      - type: h4
+        html: <i class="fa-solid fa-file-shield"></i> Evidence Handling
+      - type: p
+        md: "Logs help investigate — but must not become a data leak."
+      - type: p
+        md: "Keep event type and non-sensitive context (e.g., userId), remove secrets (tokens/passwords)."
+      - type: p
+        md: "Per-log feedback shows immediately after each classification — read it to understand why."
+  # Log vault interaction (includes micro-gate before continuing)
+  - call Website: LOAD
+    browser: noframe
+    url: "assets/pages/log-vault.html"
+    width: 1280
+    height: 720
+  - call Website: SHOW
+  - call WaitEvent: log-vault-complete
+  - call Website: HIDE
+  - hide ALL:
+  - scene: scene_6
+
+####################################################################################################
+# Scene 6: Theory - Token Revocation & Recovery (with Micro-Interaction Gate)
+####################################################################################################
+scene_6:
+  - call ProgressBar: STEP
+    step: 7
+  - show bg_tokenwheel: WITH FADE
+  - show ker: explaining AT LEFT WITH CUT
+  - show android: online AT RIGHT WITH CUT
+  # Dialogue
+  - ker says: "If a token leaked, we don't just hide it — we invalidate it."
+  - android says: "Define revocation."
+  - ker says: "Revocation makes a token unusable. It's like changing the access codes after a breach."
+  - android says: "So recovery includes rotating secrets and forcing re-auth?"
+  - ker says: "Exactly. Containment stops the bleeding; recovery restores trust."
+  # Side Panel
+  - call SidePanel:
+    dontwait: true
+    content:
+      - type: h4
+        html: <i class="fa-solid fa-rotate"></i> Recovery Basics
+      - type: p
+        md: "If credentials/tokens may be exposed:"
+      - type: p
+        md: "- Revoke existing tokens"
+      - type: p
+        md: "- Require re-authentication"
+      - type: p
+        md: "- Reduce future exposure (fix logging, storage, and component checks)"
+  # Token wheel interaction (gate: must visit all 3 segments)
+  - call Website: LOAD
+    browser: noframe
+    url: "assets/pages/token-wheel.html"
+    width: 1280
+    height: 720
+  - call Website: SHOW
+  - call WaitEvent: token-wheel-complete
+  - call Website: HIDE
+  - hide ALL:
+  - scene: scene_7
+
+####################################################################################################
+# Scene 7: Practice - Sequence the Response (DnD ordering)
+####################################################################################################
+scene_7:
+  - call ProgressBar: STEP
+    step: 8
+  - show bg_console: WITH FADE
+  - show ker: thinking AT LEFT WITH CUT
+  - show android: scanning AT RIGHT WITH CUT
+  # Dialogue
+  - ker says: "Now prove you can run incident response in the right order."
+  - android says: "Sequencing actions to minimize impact."
+  - ker says: "Place the actions in the best order: Detect, Contain, Eradicate, Recover, Verify, Learn. Stop damage first, then fix the cause, then restore trust."
+  # Side Panel
+  - call SidePanel:
+    dontwait: true
+    content:
+      - type: h4
+        html: <i class="fa-solid fa-list-ol"></i> Why Sequencing Matters
+      - type: p
+        md: "Wrong order can increase damage (e.g., investigating deeply while attackers continue)."
+      - type: p
+        md: "Correct order keeps user data safer and restores service faster."
+      - type: p
+        md: "The DCERL reference panel stays pinned during the puzzle — use it as a mental scaffold without giving away which card maps to which phase."
+  # Response sequencer interaction
+  - call Website: LOAD
+    browser: noframe
+    url: "assets/pages/response-sequencer.html"
+    width: 1280
+    height: 720
+  - call Website: SHOW
+  - call WaitEvent: response-sequencer-complete
+  - call Website: HIDE
+  - hide ALL:
+  - scene: scene_8
+
+####################################################################################################
+# Scene 8: Practice - Ship the Secure Patch (Multi-select)
+####################################################################################################
+scene_8:
+  - call ProgressBar: STEP
+    step: 9
+  - show bg_patchbay: WITH FADE
+  - show ker: explaining AT LEFT WITH CUT
+  - show android: secured AT RIGHT WITH CUT
+  # Dialogue
+  - ker says: "Final step: choose the best permanent fixes. This is your secure release."
+  - android says: "Selecting mitigations for durable resilience."
+  - ker says: "Select ALL changes that directly reduce the risk of this incident recurring. Choose secure defaults that reduce exposure of data and entry points."
+  # Side Panel
+  - call SidePanel:
+    dontwait: true
+    content:
+      - type: h4
+        html: <i class="fa-solid fa-shield-halved"></i> Secure-by-Default
+      - type: p
+        md: "Make the safest behavior the default behavior."
+      - type: p
+        md: "Only open access (permissions, exports) when there is a real requirement and proper controls."
+      - type: p
+        md: "Watch the per-option feedback — wrong picks show exactly how they would re-create the leak you just contained."
+  # Patch bay interaction
+  - call Website: LOAD
+    browser: noframe
+    url: "assets/pages/patch-bay.html"
+    width: 1280
+    height: 720
+  - call Website: SHOW
+  - call WaitEvent: patch-bay-complete
+  - call Website: HIDE
+  - hide ALL:
+  - scene: scene_9
+
+####################################################################################################
+# Scene 9: Revision / After-Action Summary (mixed: fill-in + MCQ + DnD)
+####################################################################################################
+scene_9:
+  - call ProgressBar: STEP
+    step: 10
+  - show bg_aftermath: WITH FADE
+  - show ker: explaining AT LEFT WITH CUT
+  - show android: secured AT RIGHT WITH CUT
+  # Dialogue
+  - ker says: "Let's lock in what you learned."
+  - android says: "Revision protocol active. Summarize incident: entry point, weakness, outcome, fixes."
+  # Side Panel
+  - call SidePanel:
+    dontwait: true
+    content:
+      - type: h4
+        html: <i class="fa-solid fa-clipboard-check"></i> Revision Cheat-Sheet
+      - type: p
+        md: "**Root cause:** exposed private component + weak checks."
+      - type: p
+        md: "**Leak amplifier:** sensitive logs/tokens."
+      - type: p
+        md: "**Containment:** close exposure fast."
+      - type: p
+        md: "**Recovery:** revoke/rotate tokens and restore safe operation."
+      - type: p
+        md: "**Prevention:** secure defaults + minimal permissions + encrypted storage + clean logs."
+  # After-action interaction (Fill-in + MCQ + DnD)
+  - call Website: LOAD
+    browser: noframe
+    url: "assets/pages/after-action.html"
+    width: 900
+    height: 620
+  - call Website: SHOW
+  - call WaitEvent: after-action-complete
+  - call Website: HIDE
+  - scene: scene_9_mcq
+
+####################################################################################################
+# Scene 9b - Final RenJS-native MCQ reinforcement
+####################################################################################################
+scene_9_mcq:
+  - call LayoutSectionTitle: DESTROY TOP
+  - call LayoutSectionTitle: "Best first response when a private component is triggered externally?"
+    position: top
+  - call CustomText: "Best first response when a private component is triggered externally?"
+    name: android
+  - choice:
+      - "Ignore and monitor for a week":
+          - android says: "Every second you delay containment, the attacker collects more data or gains deeper access. Monitoring for a week lets the breach continue."
+          - scene: scene_9_mcq_retry
+      - "Contain: close exposure, validate access":
+          - android says: "Correct. Close the door first — then investigate."
+          - scene: wrapup
+      - "Add more permissions to investigate":
+          - android says: "Adding permissions makes things worse by expanding the attack surface."
+          - scene: scene_9_mcq_retry
+      - __config:
+          y: 620
+
+scene_9_mcq_retry:
+  - scene: scene_9_mcq
+
+####################################################################################################
+# Wrapup - End / Celebration
+####################################################################################################
+wrapup:
+  - call LayoutSectionTitle: DESTROY TOP
+  - show bg_wrapup2: WITH FADE
+  - show ker: celebrating AT LEFT WITH CUT
+  - show android: secured AT RIGHT WITH CUT
+  # Dialogue
+  - ker says: "We survived the Shadow App incident. That wasn't luck — that was discipline."
+  - android says: "Incident handled. Chain broken at containment. Root cause eradicated. Recovery complete."
+  - ker says: "Now you're not just \"Android-capable.\" You're security-ready. You detected a live threat, contained the exposure, eradicated the root cause, revoked compromised tokens, and shipped a secure-by-default patch."
+  - ker says: "That is incident discipline — and it makes the difference."
+  - android says: "Learning objectives confirmed. Rewards accepted."
+  # Hide characters for clean reward display
+  - hide ALL:
+  - show bg_wrapup2: WITH CUT
+  # Reward screen
+  - call Website: LOAD
+    browser: noframe
+    url: "assets/pages/reward-screen.html"
+    width: 900
+    height: 620
+  - call Website: SHOW
+  - call WaitEvent: reward-complete
+  - call Website: HIDE
+  - scene: endGame
+
+endGame:
+  - call ProgressBar: HIDE
+  - hide ALL:
+  - call SidePanel: CLEAR
+  - call SidePanelTips: CLEAR
+  - effect ROLLINGCREDITS:
+    endGame: true
+    text:
+      - "Shadow App Incident: Android Attack Simulation"
+      - using Cybergame

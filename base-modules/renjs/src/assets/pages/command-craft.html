@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+
+		<title>Command Craft</title>
+
+		<link rel="stylesheet" href="https://unpkg.com/xterm@4.19.0/css/xterm.css" integrity="sha384-CAUJ9lBaihiKDjVUl2YiWXGJPJ9WjsWZlyqblkhJU3lFzIQb368x0Ns1jDFrFJrW" crossorigin="anonymous">
+		<link rel="preload" href="FiraCode.woff" as="font" type="font/woff" crossorigin>
+
+		<style type="text/css">
+			@font-face {
+				font-family: FiraCode;
+				src: url(FiraCode.woff);
+			}
+
+			html, body {
+				margin: 0;
+				padding: 0;
+				background: rgba(0, 0, 0, 0.3);
+			}
+			#terminal {
+				position: fixed;
+				top: 10px;
+				left: 10px;
+				right: 10px;
+				bottom: 80px;
+				background: #000000;
+				z-index: 1;
+				border: 10px solid black;
+			}
+			#answers {
+				position: fixed;
+				left: 0px;
+				right: 0px;
+				bottom: 0px;
+				/*height: 60px;*/
+				z-index: 1;
+			}
+			#answers button {
+				padding: 10px 20px;
+				border: 2px solid #9f0075;
+				border-bottom: 4px solid #9f0075;
+				cursor: pointer;
+				font-family: 'FiraCode';
+				/*font-family: 'Ubuntu Mono, monospace, consolas';*/
+				font-size: 20px;
+				border-radius: 8px;
+				margin-right: 10px;
+				margin-left: 10px;
+				margin-top: 0px;
+				margin-bottom: 10px;
+				float:left;
+				background: #ffffff;
+			}
+			#answers.small button {
+				font-size: 16px;
+			}
+			#answers button:hover,
+			#answers button:disabled {
+				margin-top: 2px;
+				border-bottom: 2px solid #9f0075;
+				background: #bf57a4;
+			}
+			#answers button:disabled {
+				color: black;
+				opacity: 0.6;
+			}
+
+			#loading {
+				position: fixed;
+				top: 0px;
+				left: 0px;
+				right: 0px;
+				bottom: 0px;
+				background: rgba(0,0,0,0.5);
+				z-index: 2;
+				color: #ffffff;
+			}
+			.loading-dual-ring {
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				width: 92px;
+				height: 92px;
+				margin-top: -46px;
+				margin-left: -46px;
+			}
+			.loading-dual-ring:after {
+				content: " ";
+				display: block;
+				width: 64px;
+				height: 64px;
+				margin: 8px;
+				border-radius: 50%;
+				border: 6px solid #fff;
+				border-color: #fff transparent #fff transparent;
+				animation: loading-dual-ring 1.2s linear infinite;
+			}
+			@keyframes loading-dual-ring {
+				0% {
+					transform: rotate(0deg);
+				}
+				100% {
+					transform: rotate(360deg);
+				}
+			}
+
+			#error {
+				position: fixed;
+				top: 0px;
+				left: 0px;
+				right: 0px;
+				bottom: 0px;
+				background: rgba(0,0,0,0.5);
+				z-index: 2;
+				color: #ffffff;
+				display: none;
+			}
+			#error-message {
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				width: 600px;
+				height: 32px;
+				margin-top: -16px;
+				margin-left: -300px;
+				text-align: center;
+				font-size: 32px;
+				color: #ff8080;
+			}
+
+			/* width */
+			::-webkit-scrollbar {
+				width: 11px;
+			}
+
+			/* Track */
+			::-webkit-scrollbar-track {
+				background: #242424;
+			}
+
+			/* Handle */
+			::-webkit-scrollbar-thumb {
+				background: #545454;
+			}
+
+			/* Handle on hover */
+			::-webkit-scrollbar-thumb:hover {
+				background: #747474;
+			}
+
+			.bounce {
+				outline: 0;
+				border-color: red;
+				animation-name: bounce;
+				animation-duration: .5s;
+				animation-delay: 0.0s;
+			}
+
+			@keyframes bounce {
+				0% {
+					transform: translateX(0px);
+					timing-function: ease-in;
+				}
+				37% {
+					transform: translateX(5px);
+					timing-function: ease-out;
+				}
+				55% {
+					transform: translateX(-5px);
+					timing-function: ease-in;
+				}
+				73% {
+					transform: translateX(4px);
+					timing-function: ease-out;
+				}
+				82% {
+					transform: translateX(-4px);
+					timing-function: ease-in;
+				}
+				91% {
+					transform: translateX(2px);
+					timing-function: ease-out;
+				}
+				96% {
+					transform: translateX(-2px);
+					timing-function: ease-in;
+				}
+				100% {
+					transform: translateX(0px);
+					timing-function: ease-in;
+				}
+			}
+		</style>
+
+	</head>
+	<body>
+		<div id="loading">
+			<div class="loading-dual-ring"></div>
+		</div>
+		<div id="error">
+			<div id="error-message"></div>
+		</div>
+		<div id="terminal"></div>
+		<div id="answers"></div>
+
+		<!--<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js" integrity="sha512-HTENHrkQ/P0NGDFd5nk6ibVtCkcM7jhr2c7GyvXp5O+4X6O5cQO9AhqFzM+MdeBivsX7Hoys2J7pp2wdgMpCvw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>-->
+		<script src="https://unpkg.com/xterm@4.19.0/lib/xterm.js" integrity="sha384-VzFUSUDGAYS5h/IALuEgju13+zcJCeadYV17QQl+Bj3a3sqSkBkshRJpFaVW4RQr" crossorigin="anonymous"></script>
+		<script src="https://unpkg.com/xterm-addon-fit@0.5.0/lib/xterm-addon-fit.js" integrity="sha384-1z99Fy30h75RY/s/rPkqfN8NKmcrhr8zp01wGxbsfNGuiz2rCq8N4eFPwDid4IWj" crossorigin="anonymous"></script>
+
+		<script type="text/javascript">
+			(() => {
+				let mod = 'command-craft';
+				let Events = {
+					_handle : {},
+					_handle_once : {},
+					init : function() {
+						if (!this.window_listener) {
+							this.window_listener = window.addEventListener("message", (event) => {
+								// Verify that the message is coming from the same domain
+								if (event.origin !== window.location.origin) {
+									return;
+								}
+								if (event.data.type != 'renjs-event') {
+									return;
+								}
+								
+								this.fire(
+									event.data.id,
+									event.data.args || [],
+									event.data.scope || {}
+								);
+							});
+						}
+					},
+					fire : function(id, args = [], scope = {}) {
+						if (this._handle_once.hasOwnProperty(id)) {
+							let handle = this._handle_once[id];
+							this._handle_once[id] = [];
+							handle.forEach(handler => {
+								setTimeout(() => {handler.call(scope, ... args);}, 0);
+							});
+						}
+						if (this._handle.hasOwnProperty(id)) {
+							this._handle[id].forEach(handler => {
+								setTimeout(() => {handler.call(scope, ... args);}, 0);
+							});
+						}
+					},
+					listen : function(id, handler, once = false) {
+						this.init();
+						if (once) {
+							if (!this._handle_once.hasOwnProperty(id)) {
+								this._handle_once[id] = [];
+							}
+							this._handle_once[id].push(handler);
+						}
+						else {
+							if (!this._handle.hasOwnProperty(id)) {
+								this._handle[id] = [];
+							}
+							this._handle[id].push(handler);
+						}
+					},
+					wait : function(id) {
+						return new Promise(resolve => {
+							this.listen(id, function () {
+								resolve([... arguments]);
+							}, true);
+						});
+					}
+				};
+
+				window.Game = {
+
+					// Expose Events in case someone want to use them
+					Events : Events,
+
+					// Expose on message listeners
+					onMessage : (id, handler) => {
+						Events.listen(mod + '-' + id, handler);
+					},
+
+					// Expose send message function
+					sendMessage : (id, args = [], scope = {}) => {
+						let parent = window.parent;
+						if (parent == window) {
+							console.log(`Failed to send message [no parent].`);
+							return;
+						}
+						// Send message
+						parent.postMessage({
+							type: 'renjs-event',
+							id : mod + '-' + id,
+							args : args,
+							scope : scope
+						}, window.location.origin);
+					},
+
+					// Disable right click
+					rightClickHandler : document.addEventListener('contextmenu', event => {
+						event.preventDefault();
+						return false;
+					})
+
+				};
+
+			})();
+		</script>
+
+		<script type="text/javascript">
+			let loading = {
+				element : document.getElementById('loading'),
+				enable : function () {
+					this.element.style.display = 'block';
+				},
+				disable : function () {
+					this.element.style.display = 'none';
+				}
+			};
+			let error = {
+				element : document.getElementById('error'),
+				message : document.getElementById('error-message'),
+				enable : function (message) {
+					this.message.textContent = message;
+					this.element.style.display = 'block';
+				},
+				disable : function () {
+					this.element.style.display = 'none';
+					this.message.textContent = '';
+				}
+			};
+
+			let term = {
+				init : function() {
+					// Create terminal
+					this.xterm = new Terminal({
+						fontSize: 20,
+						fontFamily: 'Ubuntu Mono, monospace, consolas',
+						cursorBlink : true
+					});
+					
+					// Load addons
+					this.addons = {};
+					this.addons.fit = new FitAddon.FitAddon();
+					this.xterm.loadAddon(this.addons.fit);
+
+					// Open terminal
+					this.element = document.querySelector('#terminal');
+					this.xterm.open(this.element);
+
+					// Load addons
+					this.addons.fit.fit();
+
+					//// Handle data input
+					//this.xterm.onData((input) => {
+					//	return this.onInput(input);
+					//});
+					//
+					//// Handle pasting
+					//this._cache_paste_timeout = new Date().getTime();
+					//this.xterm.attachCustomKeyEventHandler(e => {
+					//	return this.keyHandler(e, event);
+					//});
+					//this.element.addEventListener('contextmenu', (e) => {
+					//	return this.rightClickHandler(e, event);
+					//});
+					//
+					//// this.xterm.focus();
+				},
+				
+				log : function(level) {
+					console.log('[Terminal]', ... arguments.splice(1));
+				},
+
+				getSize : function() {
+					return [this.xterm.cols, this.xterm.rows];
+				},
+
+				write_cache : [],
+				write : function(input) {
+					return this.type(input, 0);
+				},
+				type : function(input, speed=25) {
+					return new Promise((resolve) => {
+						this.write_cache.push([input, speed, 0, () => {resolve();}]);
+						this.write_handler();
+					});
+				},
+				process : function(input) {
+					if (!Array.isArray(input)) {
+						input = [input];
+					}
+					let parse = (item, callback = null) => {
+						let text = item.text;
+						if (item.color || item.background || item.style) {
+							let prefix =
+								((style) => {
+									if (!style) return '';
+									switch(style.toLowerCase()) {
+										case 'bold': return '1;';
+										case 'faint': return '2;';
+										case 'italics': return '3;';
+										case 'underlined': return '4;';
+									}
+									return '0;'
+								})(item.style) + 
+								((color_str) => {
+									if (!color_str) return '';
+									let color = 0;
+									switch(color_str.toLowerCase()) {
+										case 'black' : color = 30; break;
+										case 'red' : color = 31; break;
+										case 'green' : color = 32; break;
+										case 'yellow' : color = 33; break;
+										case 'blue' : color = 34; break;
+										case 'magenta' : color = 35; break;
+										case 'cyan' : color = 36; break;
+										case 'light gray' : color = 37; break;
+										case 'gray' : color = 90; break;
+										case 'lightred' : 
+										case 'light-red' : color = 91; break;
+										case 'lightgreen' :
+										case 'light-green' : color = 92; break;
+										case 'lightyellow' :
+										case 'light-yellow' : color = 93; break;
+										case 'lightblue' :
+										case 'light-blue' : color = 94; break;
+										case 'lightmagenta' :
+										case 'light-magenta' : color = 95; break;
+										case 'lightcyan' :
+										case 'light-cyan' : color = 96; break;
+										case 'white' : color = 97; break;
+									}
+									return color + ';';
+								})(item.color) +
+								((color_str) => {
+									if (!color_str) return '';
+									let color = 0;
+									switch(color_str.toLowerCase()) {
+										case 'black' : color = 30; break;
+										case 'red' : color = 31; break;
+										case 'green' : color = 32; break;
+										case 'yellow' : color = 33; break;
+										case 'blue' : color = 34; break;
+										case 'magenta' : color = 35; break;
+										case 'cyan' : color = 36; break;
+										case 'light Gray' : color = 37; break;
+										case 'gray' : color = 90; break;
+										case 'white' : color = 97; break;
+									}
+									if (color == 0) return '';
+									return (color + 10) + ';';
+								})(item.background);
+							prefix = '\x1b[' + ((prefix.length < 2) ? '0' : prefix.slice(0, -1)) + 'm';
+							let suffix = '\x1b[0m';
+							text = [prefix, ...text, suffix];
+						}
+						if (item.clear) {
+							callback = ((callback) => {
+								return (() => {
+									this.xterm.clear();
+									if (callback) callback();
+								});
+							})(callback);
+						}
+						return [text || '', (item.mode == 'type' ? 25 : 0), item.sleep || 0, callback];
+					};
+					return new Promise((resolve) => {
+						for (let i = 0; i < input.length - 1; i++) {
+							this.write_cache.push(parse(input[i]));
+						}
+						this.write_cache.push(parse(input[input.length - 1], () => {resolve();}));
+						this.write_handler();
+					});
+				},
+
+				write_atomic : null, // null or <array>[<text to print>, <type speed>, <sleep time>, <callback>]
+				write_handler : function() {
+					if (this.write_atomic) return;
+					if (this.write_cache.length <= 0) return;
+					this.write_atomic = this.write_cache.shift();
+					if (this.write_atomic[0] && this.write_atomic[0].length > 0) {
+						this.write_atomic[0] = [... this.write_atomic[0]];
+					}
+					else {
+						this.write_atomic[0] = [];
+					}
+					this.write_handler_loop();
+				},
+				write_handler_loop : function() {
+					if (!this.write_atomic) return;
+					if (this.write_atomic.paused) return;
+
+					let hasFinishedPrinting = this.write_atomic[0].length < 1 ? true : false; // if text to print is less than 1
+					let instantPrint = this.write_atomic[1] <= 0 ? true : false; // if type speed is zero or less
+
+					// If typing finished
+					if (hasFinishedPrinting || instantPrint) {
+						if (instantPrint) {
+							this.xterm.write(this.write_atomic[0].join(''));
+						}
+
+						callback = this.write_atomic[3];
+						sleep = this.write_atomic[2] || 0;
+
+						// If there is a sleep after typing
+						if (sleep > 0) {
+							this.write_atomic.paused = true;
+							setTimeout(() => {
+								// Clean typing buffer
+								this.write_atomic = null;
+								if (callback) callback();
+								// Continue on next text
+								this.write_handler();
+							}, sleep);
+							return;
+						}
+						// If no sleep
+						else {
+							// Clean typing buffer
+							this.write_atomic = null;
+							if (callback) callback();
+							// Continue on next text
+							this.write_handler();
+							return;
+						}
+					}
+
+					let chunk = this.write_atomic[0].shift();
+					this.xterm.write(chunk);
+
+					if (this.write_atomic[1] <= 0) {
+						this.write_handler_loop();
+					}
+					else {
+						setTimeout(() => {
+							this.write_handler_loop();
+						}, this.write_atomic[1]);
+					}
+				},
+
+				dispose : function() {
+					this.xterm.dispose();
+				}
+			};
+
+			let UIAnswers = {
+				init : function() {
+					this.cached_height = -1;
+					this.teminal = document.querySelector('#terminal');
+					this.wrapper = document.querySelector('#answers');
+				},
+
+				clear : function() {
+					this.wrapper.textContent = '';
+					this.reload();
+				},
+
+				append : function(text, callback) {
+					let btn = document.createElement('button');
+					btn.textContent = text;
+					if (callback) {
+						btn.addEventListener('click', callback, false);
+					}
+					this.wrapper.appendChild(btn);
+					this.reload();
+					return btn;
+				},
+
+				appendElement : function(element) {
+					this.wrapper.appendChild(element);
+					this.reload();
+				},
+
+				reload : function() {
+					this.fit();
+					// If the font used for the buttons is not preloaded, then the height may change after some ms
+					//if (this._reload_fit_timeout) clearTimeout(this._reload_fit_timeout);
+					//this._reload_fit_timeout = setTimeout(() => {
+					//	this._reload_fit_timeout = null;
+					//	this.fit();
+					//}, 100);
+				},
+
+				fit : function() {
+					let height = Math.ceil(this.wrapper.clientHeight);
+					if (this.cached_height == height) return;
+					this.cached_height = height;
+					this.teminal.style.bottom = height + 'px';
+					term.addons.fit.fit();
+				}
+			}
+			UIAnswers.init();
+
+			let answers = {
+				id : 0,
+				init : function(settings) {
+					this.id ++;
+					this.term = settings.terminal;
+					this.mode = settings.mode;
+					this.difficulty = settings.difficulty || 'easy';
+					this.answers =  settings.answers;
+					this.dont_mix_answers = settings.dont_mix_answers;
+					this.dont_print_answers = settings.dont_print_answers;
+					this.answer = null;
+					this.correct = null;
+					this.pre_text = (settings.pre_text !== undefined ? settings.pre_text : 'h4ck3r@pc:~$ ');
+					this.term_text = utils.prepareText(settings.term_text || ''); 
+					this.output = utils.prepareText(settings.output || 'Correct!');
+					this.output.push(utils.prepareText('\r\n')[0]);
+
+					this.reset();
+				},
+
+				reset : function() {
+					if (this.mode == 'put-in-order') {
+						this.term.write(this.pre_text);
+						if (this.term_text.length > 0)
+							this.term.process(this.term_text);
+						UIAnswers.clear();
+						this.answer = '';
+						this.correct = this.answers.join(' ');
+						let checkIfCorrect = this.difficulty == 'easy' ? true : false;
+
+						let number_of_answers_left = this.answers.length;
+						if (!this.dont_mix_answers) this.shuffle(this.answers);
+						else this.answers = this.answers.reverse()
+						let atomic = false;
+						for (let i = this.answers.length - 1; i >= 0; i--) {
+							let val = this.answers[i];
+							let btn = document.createElement('button');
+							btn.textContent = val.text ? val.text : val;
+							btn.addEventListener('click', () => {
+								if (atomic) return;
+								atomic = true;
+
+								let chunk = (this.answer.length > 0 ? ' ' : '') + (val.value ? val.value : val);
+
+								if (checkIfCorrect && !this.correct.startsWith(this.answer + chunk)) {
+									btn.classList.add('bounce');
+									setTimeout(() => {
+										btn.classList.remove('bounce');
+									}, 500);
+									atomic = false;
+									return;
+								}
+
+								btn.disabled = true;
+								this.answer += chunk;
+								if (this.dont_print_answers) chunk = '';
+								this.term.type(chunk).then(() => {
+									number_of_answers_left--;
+									atomic = false;
+									if (number_of_answers_left == 0) {
+										UIAnswers.clear();
+										this.check();
+									}
+								});
+							}, false);
+							UIAnswers.appendElement(btn);
+						}
+					}
+
+					else if (this.mode == 'sequence-builder') {
+						let step = this.step || 1;
+
+						if (step == 1) {
+							this.term.write(this.pre_text);
+							if (this.term_text.length > 0)
+								this.term.process(this.term_text);
+							this.answer = '';
+							this.correct = this.answers.map(x => x[0]).join(' ');
+						}
+						UIAnswers.clear();
+
+						let answers = this.answers[step - 1];
+						let isCorrect = this.difficulty == 'easy' ? answers[0] : false;
+
+						if (!this.dont_mix_answers) this.shuffle(answers);
+						else answers = answers.reverse()
+						let atomic = false;
+						for (let i = answers.length - 1; i >= 0; i--) {
+							let val = answers[i];
+							let btn = document.createElement('button');
+							btn.textContent = val;
+							btn.addEventListener('click', () => {
+								if (atomic) return;
+								atomic = true;
+
+								btn.disabled = true;
+								if (isCorrect && isCorrect != val) {
+									btn.classList.add('bounce');
+									atomic = false;
+									return;
+								}
+
+								let chunk = (this.answer.length > 0 ? ' ' : '') + val;
+								this.answer += chunk;
+
+								if (this.dont_print_answers) chunk = '';
+								this.term.type(chunk).then(() => {
+									this.step = step + 1;
+									if (this.step > this.answers.length) {
+										this.step = 0;
+										UIAnswers.clear();
+										this.check();
+									}
+									else {
+										this.reset();
+									}
+								});
+							}, false);
+							UIAnswers.appendElement(btn);
+						}
+					}
+				},
+
+				check : function() {
+					// Change line
+					this.term.write('\r\n');
+					setTimeout(() => {
+						if (this.answer == this.correct) {
+							this.term.process(this.output).then(() => {
+								setTimeout(() => {
+									Game.sendMessage('complete', [this.answer]);
+								}, 2000);
+							});
+						}
+						else {
+							let program = this.answer.split(' ')[0];
+							if (this.answer.split(' ')[0] != this.correct.split(' ')[0]) {
+								this.term.write(this.answer.split(' ')[0] + ': command not found\r\n');
+							}
+							else {
+								this.term.write(this.answer.split(' ')[0] + ': invalid parameters\r\n');
+							}
+							this.reset();
+						}
+					}, 500);
+				},
+
+				shuffle: function(array) {
+				    for (let i = array.length - 1; i > 0; i--) {
+				        const j = Math.floor(Math.random() * (i + 1));
+				        [array[i], array[j]] = [array[j], array[i]];
+				    }
+				}
+			};
+
+			let demo = {
+				id : 0,
+
+				init : function(settings) {
+					this.id ++;
+					this.term = settings.terminal;
+					this.text = utils.prepareText(settings.text || '');
+					this.answers = settings.answers || [];
+					UIAnswers.clear();
+					this.run();
+				},
+
+				run : function() {
+					let id = this.id;
+					this.term.process(this.text).then(() => {
+						if (id != this.id) return;
+						this.done();
+					});
+				},
+
+				done : function() {
+					// If no answers, just exit
+					if (!this.answers.length) {
+						Game.sendMessage('complete', []);
+					}
+					else {
+						UIAnswers.clear();
+						let atomic = false;
+						for (let i = 0; i < this.answers.length; i++) {
+							let val = this.answers[i];
+							let btn = document.createElement('button');
+							btn.textContent = val.text ? val.text : val;
+							btn.addEventListener('click', () => {
+								if (atomic) return;
+								atomic = true;
+
+								Game.sendMessage('complete', [(val.value ? val.value : val)]);
+							}, false);
+							UIAnswers.appendElement(btn);
+						}
+					}
+				}
+			};
+
+			let utils = {
+				prepareText : function(input) {
+					if (Array.isArray(input)) {
+						let list = [];
+						input.forEach((item) => {
+							list.push(... this.prepareText(item));
+						});
+						return list;
+					}
+					else if (input.hasOwnProperty('text') || input.hasOwnProperty('sleep')) {
+						//Object.keys(input).forEach(key => {});
+						if (!input.mode) input.mode = 'type';
+						if (!input.sleep) input.sleep = 0;
+						return [input];
+					}
+					else {
+						return this.prepareText({text: input.toString(), mode: 'type'});
+					}
+				}
+			};
+
+			(() => {
+				//// Get info from URL
+				//let params = new URLSearchParams(window.location.search);
+				//
+				//// Parameters
+				//let mode = params.get('mode') || ''
+				//mode = (mode == 'put-in-order') ? mode : 'put-in-order';
+
+				// Show loading
+				loading.enable();
+				// Start Terminal
+				term.init();
+
+				Game.onMessage('init', (data) => {
+					// Stop loading
+					loading.disable();
+
+					if (data.mode == 'demo') {
+						demo.init({
+							terminal: term,
+							mode: data.mode,
+							text: data.term_text,
+							answers: data.answers
+						});
+					}
+					else if (data.mode == 'reset') {
+						term.xterm.reset();
+					}
+					//else if (data.mode == 'put-in-order' || data.mode == 'sequence-builder') {
+					else {
+						answers.init({
+							terminal: term,
+							mode: data.mode || 'put-in-order',
+							answers: data.answers,
+							dont_mix_answers: data.dont_mix_answers,
+							dont_print_answers: data.dont_print_answers,
+							output: data.output,
+							term_text: data.term_text,
+							pre_text: data.pre_text
+						});
+					}
+				});
+
+
+				// Handle Answers
+				/*
+				answers.init({
+					terminal: term,
+					mode: mode,
+					answers: ['hashcat', '-m', '0', '42f749ade7f9e195bf475f37a44cafcb', '..\\wordlists\\rockyou.txt'],
+					output: 'hashcat command output here'
+				});
+				*/
+				/*
+				answers.init({
+					terminal: term,
+					mode: 'put-in-order',
+					difficulty: 'easy',
+					answers: ['hashcat', '-m', '0', '42f749ade7f9e195bf475f37a44cafcb', '..\\wordlists\\rockyou.txt'],
+					output: 'hashcat command output here'
+				});
+				*/
+				/*
+				answers.init({
+					terminal: term,
+					mode: 'sequence-builder',
+					difficulty: 'not-easy',
+					answers: [
+						['hashcat', 'netcat', 'echo'],
+						['-m 0', '--verbose', '--help'],
+						['42f749ade7f9e195bf475f37a44cafcb', 'file.docx', 'print.pdf'],
+						['..\\wordlists\\rockyou.txt', '-a AES', '~/.git/']
+					],
+					output: 'hashcat command output here'
+				});
+				*/
+			})();
+		</script>
+
+	</body>
+</html>

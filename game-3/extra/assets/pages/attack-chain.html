@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="cybergame-common.css">
+<style>
+  html, body { background: transparent; overflow: hidden; }
+  .container { justify-content: center; align-items: center; }
+  .branded-panel {
+    background: rgba(6, 10, 20, 0.88);
+    border: 1px solid rgba(0, 212, 255, 0.45);
+    border-radius: 8px;
+    padding: 18px 28px;
+    box-shadow: 0 0 24px rgba(0,212,255,0.15), inset 0 0 24px rgba(0,212,255,0.03);
+    display: flex; flex-direction: column; align-items: center;
+    gap: 12px; max-width: 1080px; width: 96%;
+  }
+  .title { font-size: 20px; color: #00d4ff; text-transform: uppercase; letter-spacing: 3px; }
+  .subtitle { font-size: 13px; color: rgba(224,230,240,0.65); text-align: center; }
+
+  .chain {
+    display: flex; align-items: center; justify-content: center;
+    gap: 8px; flex-wrap: nowrap; width: 100%; margin: 8px 0;
+  }
+  .chain-node {
+    flex: 1; max-width: 170px;
+    padding: 14px 8px; border-radius: 8px;
+    border: 2px solid rgba(0,212,255,0.35);
+    background: rgba(0,212,255,0.05);
+    text-align: center; cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+  }
+  .chain-node:hover { background: rgba(0,212,255,0.12); border-color: #00d4ff; transform: translateY(-2px); }
+  .chain-node.visited { background: rgba(57,255,20,0.08); border-color: #39ff14; }
+  .chain-node.visited::after {
+    content: "\2713"; position: absolute; top: 4px; right: 8px;
+    color: #39ff14; font-weight: bold;
+  }
+  .chain-node:focus { outline: 2px solid #00d4ff; outline-offset: 3px; }
+  .node-name {
+    font-size: 15px; color: #00d4ff; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;
+  }
+  .node-mini { font-size: 11px; color: rgba(224,230,240,0.6); }
+  .arrow {
+    flex: 0 0 18px; color: #ffaa3c; font-size: 22px; text-align: center; user-select: none;
+  }
+  .chain-node.intent-spoof-hover .spoof-tip {
+    display: block;
+  }
+  .spoof-tip {
+    display: none;
+    position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
+    background: rgba(8, 14, 30, 0.96); border: 1px solid #ffaa3c;
+    color: #ffaa3c; padding: 8px 12px; border-radius: 6px;
+    font-size: 12px; line-height: 1.4; width: 240px; margin-bottom: 8px;
+    text-align: left; z-index: 10;
+  }
+
+  .detail {
+    width: 100%; max-width: 880px; min-height: 120px;
+    padding: 14px 18px; border-radius: 8px;
+    background: rgba(0,0,0,0.45); border: 1px solid rgba(0,212,255,0.3);
+    color: #e0e6f0; font-size: 14px; line-height: 1.5;
+  }
+  .detail .step { color: #39ff14; font-weight: bold; }
+  .detail .label { color: #00d4ff; text-transform: uppercase; font-size: 12px; letter-spacing: 1px; margin-top: 6px; display: block; }
+  .detail .empty { color: rgba(224,230,240,0.45); font-style: italic; }
+  .progress-text { font-size: 13px; color: rgba(224,230,240,0.55); }
+  .continue-btn { opacity: 0; pointer-events: none; transition: opacity 0.4s ease; }
+  .continue-btn.visible { opacity: 1; pointer-events: auto; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="branded-panel">
+    <div class="title">Threat Path</div>
+    <div class="subtitle">Click each chain node to see its Android example and defence action. Hover "Trigger" for Intent Spoofing.</div>
+
+    <div class="chain" id="chain"></div>
+
+    <div class="detail" id="detail">
+      <span class="empty">Select a node to inspect.</span>
+    </div>
+
+    <div class="progress-text" id="progressText">0 / 5 explored</div>
+    <button class="btn btn-success continue-btn" id="continueBtn">Continue</button>
+  </div>
+</div>
+<script>
+const nodes = [
+  { id: "entry", name: "Entry", mini: "Foothold",
+    example: "A malicious app installed alongside yours, or a risky component left exported.",
+    defence: "Avoid unnecessary exports; review what gets installed in shared contexts."
+  },
+  { id: "trigger", name: "Trigger", mini: "Crafted request", isTrigger: true,
+    example: "Attacker sends a carefully crafted Intent to your exposed component.",
+    defence: "Validate the caller and the request shape before doing any sensitive work.",
+    spoof: "Intent Spoofing — a malicious app sends an Intent that the component trusts without checks."
+  },
+  { id: "access", name: "Access", mini: "Unauthorized read/write",
+    example: "Attacker reaches private data (profile fields, session state) or actions.",
+    defence: "Require authentication and minimal data exposure inside each component."
+  },
+  { id: "exfil", name: "Exfiltration", mini: "Data theft",
+    example: "Attacker extracts tokens or personal data — often through logs or weak storage.",
+    defence: "Encrypt sensitive storage and never log secrets or PII."
+  },
+  { id: "persist", name: "Persistence", mini: "Makes it repeatable",
+    example: "Attacker installs a hook, schedules a job, or saves a long-lived token to come back.",
+    defence: "Rotate credentials regularly; monitor for repeated triggers from the same source."
+  }
+];
+
+const chainEl = document.getElementById("chain");
+const detailEl = document.getElementById("detail");
+const progressText = document.getElementById("progressText");
+const continueBtn = document.getElementById("continueBtn");
+const visited = new Set();
+let done = false;
+
+function render() {
+  chainEl.innerHTML = "";
+  nodes.forEach((n, i) => {
+    if (i > 0) {
+      const arrow = document.createElement("div");
+      arrow.className = "arrow";
+      arrow.textContent = "→";
+      arrow.setAttribute("aria-hidden", "true");
+      chainEl.appendChild(arrow);
+    }
+    const card = document.createElement("div");
+    card.className = "chain-node";
+    card.setAttribute("tabindex", "0");
+    card.setAttribute("role", "button");
+    card.setAttribute("aria-label", `${n.name} — ${n.mini}`);
+    card.dataset.id = n.id;
+    card.innerHTML = `
+      <div class="node-name">${n.name}</div>
+      <div class="node-mini">${n.mini}</div>
+      ${n.isTrigger ? `<div class="spoof-tip">${n.spoof}</div>` : ""}
+    `;
+    card.addEventListener("click", () => selectNode(n));
+    card.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectNode(n); } });
+    if (n.isTrigger) {
+      card.addEventListener("mouseenter", () => card.classList.add("intent-spoof-hover"));
+      card.addEventListener("mouseleave", () => card.classList.remove("intent-spoof-hover"));
+      card.addEventListener("focus", () => card.classList.add("intent-spoof-hover"));
+      card.addEventListener("blur", () => card.classList.remove("intent-spoof-hover"));
+    }
+    chainEl.appendChild(card);
+  });
+}
+
+function selectNode(n) {
+  visited.add(n.id);
+  document.querySelectorAll(".chain-node").forEach(el => {
+    if (visited.has(el.dataset.id)) el.classList.add("visited");
+  });
+  detailEl.innerHTML = `
+    <div><span class="step">${n.name.toUpperCase()}</span></div>
+    <span class="label">Example in Android</span>
+    ${n.example}
+    <span class="label">Defence action</span>
+    ${n.defence}
+  `;
+  progressText.textContent = `${visited.size} / ${nodes.length} explored`;
+  if (visited.size === nodes.length) {
+    continueBtn.classList.add("visible");
+    continueBtn.focus();
+  }
+}
+
+continueBtn.addEventListener("click", () => {
+  if (done) return; done = true;
+  try { window.parent.postMessage({ type: "renjs-event", id: "attack-chain-complete" }, "*"); } catch(e) {}
+});
+
+render();
+window.addEventListener("load", () => window.focus());
+</script>
+</body>
+</html>

@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="cybergame-common.css">
+<style>
+  html, body { background: transparent; overflow: hidden; }
+  .container { justify-content: center; align-items: center; }
+  .branded-panel {
+    background: rgba(6, 10, 20, 0.88);
+    border: 1px solid rgba(0, 212, 255, 0.45);
+    border-radius: 8px;
+    padding: 14px 24px;
+    box-shadow: 0 0 24px rgba(0,212,255,0.15);
+    display: flex; flex-direction: column; align-items: center;
+    gap: 10px; max-width: 1100px; width: 96%;
+  }
+  .title { font-size: 20px; color: #00d4ff; text-transform: uppercase; letter-spacing: 3px; }
+  .subtitle { font-size: 13px; color: rgba(224,230,240,0.65); text-align: center; }
+
+  .work-area { display: flex; gap: 16px; width: 100%; }
+  .pool {
+    flex: 1; min-height: 320px;
+    border: 1px dashed rgba(0,212,255,0.4); border-radius: 8px;
+    padding: 10px; background: rgba(0,212,255,0.03);
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .pool h4 {
+    margin: 0 0 6px 0; font-size: 12px; color: #00d4ff;
+    text-transform: uppercase; letter-spacing: 1px;
+  }
+  .zone { border-color: rgba(224,230,240,0.4); background: rgba(224,230,240,0.03); }
+  .zone[data-class="safe"] h4 { color: #39ff14; }
+  .zone[data-class="sensitive"] h4 { color: #ff3366; }
+  .zone.over { background: rgba(0,212,255,0.08); border-color: #00d4ff; }
+
+  .log-card {
+    padding: 8px 10px; border-radius: 6px;
+    background: rgba(0,0,0,0.45);
+    border: 1px solid rgba(0,212,255,0.3);
+    border-left: 3px solid #00d4ff;
+    cursor: grab; font-family: 'Courier New', monospace; font-size: 12px;
+    color: #e0e6f0;
+    user-select: none;
+  }
+  .log-card:focus { outline: 2px solid #00d4ff; outline-offset: 2px; }
+  .log-card.dragging { opacity: 0.5; }
+  .log-card.placed-correct { border-left-color: #39ff14; }
+  .log-card.placed-wrong { border-left-color: #ff3366; }
+
+  .feedback {
+    width: 100%; min-height: 28px;
+    padding: 8px 12px; border-radius: 6px;
+    font-size: 12px; line-height: 1.5; display: none;
+  }
+  .feedback.show { display: block; }
+  .feedback.correct { background: rgba(57,255,20,0.08); color: #39ff14; border: 1px solid rgba(57,255,20,0.3); }
+  .feedback.wrong { background: rgba(255,51,102,0.08); color: #ff3366; border: 1px solid rgba(255,51,102,0.3); }
+  .progress-text { font-size: 13px; color: rgba(224,230,240,0.55); }
+  .continue-btn { opacity: 0; pointer-events: none; transition: opacity 0.4s ease; }
+  .continue-btn.visible { opacity: 1; pointer-events: auto; }
+  .harvest-anim {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; background: radial-gradient(ellipse at center, rgba(255,51,102,0.4) 0%, transparent 60%);
+    opacity: 0; transition: opacity 0.3s ease;
+  }
+  .harvest-anim.flash { opacity: 1; }
+
+  /* PDF accessibility requirement: harvest animation must be suppressible via reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .harvest-anim, .harvest-anim.flash { opacity: 0 !important; transition: none !important; }
+    .log-card, .pool, .zone { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="branded-panel" style="position: relative">
+    <div class="harvest-anim" id="harvest" aria-hidden="true"></div>
+    <div class="title">Log Vault</div>
+    <div class="subtitle">Drag each log line into the correct zone. Use Tab + Enter to keyboard-select, then Arrow Up/Down to move between zones, Enter to confirm.</div>
+
+    <div class="work-area">
+      <div class="pool" id="pool"><h4>Log Lines</h4></div>
+      <div class="pool zone" id="zoneSafe" data-class="safe"><h4>Safe to Log</h4></div>
+      <div class="pool zone" id="zoneSens" data-class="sensitive"><h4>Sensitive — Remove/Redact</h4></div>
+    </div>
+
+    <div class="feedback" id="feedback" role="status" aria-live="polite"></div>
+    <div class="progress-text" id="progressText">0 / 4 classified</div>
+    <button class="btn btn-success continue-btn" id="continueBtn">Proceed to Recovery</button>
+  </div>
+</div>
+<script>
+const logs = [
+  {
+    id: "A",
+    text: 'Profile loaded for userId=4821',
+    target: "safe",
+    feedback: {
+      safe: "Correct — userId=4821 is an internal identifier. It cannot directly identify a person outside the system.",
+      sensitive: "userId alone cannot authenticate or directly identify the person outside the system — it's safe here."
+    }
+  },
+  {
+    id: "B",
+    text: 'Session token=ZX91-SECRET-0091 created',
+    target: "sensitive",
+    feedback: {
+      safe: "If a token is logged, anyone with log access has a valid credential. Tokens must never appear in logs.",
+      sensitive: "Correct — session tokens are credentials. Logging one is equivalent to writing a key in plain sight."
+    },
+    triggersHarvest: true
+  },
+  {
+    id: "C",
+    text: 'Login failed: invalid password for alex@example.com',
+    target: "sensitive",
+    feedback: {
+      safe: "Even in failure logs, an email is PII — an attacker scanning logs learns which accounts exist on the platform.",
+      sensitive: "Correct — logging the email on a failed login leaks account existence and personal identity."
+    }
+  },
+  {
+    id: "D",
+    text: 'Sync completed: 12 settings updated',
+    target: "safe",
+    feedback: {
+      safe: "Correct — operational status with no PII or credentials is ideal for debugging.",
+      sensitive: "This line contains no personal data or secrets — it's exactly the kind of log you want to keep."
+    }
+  }
+];
+
+const pool = document.getElementById("pool");
+const zoneSafe = document.getElementById("zoneSafe");
+const zoneSens = document.getElementById("zoneSens");
+const feedbackEl = document.getElementById("feedback");
+const progressText = document.getElementById("progressText");
+const continueBtn = document.getElementById("continueBtn");
+const harvest = document.getElementById("harvest");
+
+const placed = {}; // id -> { card, zone }
+let done = false;
+
+function buildCard(log) {
+  const card = document.createElement("div");
+  card.className = "log-card";
+  card.draggable = true;
+  card.tabIndex = 0;
+  card.dataset.id = log.id;
+  card.setAttribute("role", "button");
+  card.setAttribute("aria-label", `Log ${log.id}: ${log.text}`);
+  card.innerHTML = log.text;
+  card.addEventListener("dragstart", e => {
+    card.classList.add("dragging");
+    e.dataTransfer.setData("text/plain", log.id);
+  });
+  card.addEventListener("dragend", () => card.classList.remove("dragging"));
+  // keyboard: Enter cycles target (pool → safe → sensitive → pool)
+  card.addEventListener("keydown", e => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      const cur = placed[log.id] ? placed[log.id].zone : "pool";
+      const next = cur === "pool" ? "safe" : cur === "safe" ? "sensitive" : "pool";
+      placeCard(log, next);
+    }
+  });
+  return card;
+}
+
+function placeCard(log, zoneName) {
+  // remove existing
+  if (placed[log.id]) {
+    placed[log.id].card.remove();
+  }
+  const card = buildCard(log);
+  let target;
+  if (zoneName === "safe") target = zoneSafe;
+  else if (zoneName === "sensitive") target = zoneSens;
+  else target = pool;
+  target.appendChild(card);
+  placed[log.id] = { card, zone: zoneName };
+  if (zoneName === "safe" || zoneName === "sensitive") evaluatePlacement(log, zoneName, card);
+  else { feedbackEl.classList.remove("show"); }
+  updateProgress();
+}
+
+function evaluatePlacement(log, zoneName, card) {
+  const isCorrect = zoneName === log.target;
+  card.classList.remove("placed-correct", "placed-wrong");
+  card.classList.add(isCorrect ? "placed-correct" : "placed-wrong");
+  feedbackEl.classList.remove("correct", "wrong");
+  feedbackEl.classList.add("show", isCorrect ? "correct" : "wrong");
+  feedbackEl.textContent = `Log ${log.id} → ${log.feedback[zoneName]}`;
+  if (!isCorrect && log.triggersHarvest && zoneName === "safe") {
+    harvest.classList.add("flash");
+    setTimeout(() => harvest.classList.remove("flash"), 700);
+  }
+}
+
+function updateProgress() {
+  let classified = 0, allCorrect = true;
+  logs.forEach(l => {
+    const p = placed[l.id];
+    if (p && (p.zone === "safe" || p.zone === "sensitive")) {
+      classified++;
+      if (p.zone !== l.target) allCorrect = false;
+    } else {
+      allCorrect = false;
+    }
+  });
+  progressText.textContent = `${classified} / ${logs.length} classified`;
+  // Micro-interaction gate: all 4 must be placed (any zone, feedback shown). Player can reclassify before continuing.
+  if (classified === logs.length && allCorrect) {
+    continueBtn.classList.add("visible");
+  } else {
+    continueBtn.classList.remove("visible");
+  }
+}
+
+[zoneSafe, zoneSens].forEach(zone => {
+  zone.addEventListener("dragover", e => { e.preventDefault(); zone.classList.add("over"); });
+  zone.addEventListener("dragleave", () => zone.classList.remove("over"));
+  zone.addEventListener("drop", e => {
+    e.preventDefault(); zone.classList.remove("over");
+    const id = e.dataTransfer.getData("text/plain");
+    const log = logs.find(l => l.id === id);
+    if (!log) return;
+    placeCard(log, zone.dataset.class);
+  });
+});
+pool.addEventListener("dragover", e => { e.preventDefault(); pool.classList.add("over"); });
+pool.addEventListener("dragleave", () => pool.classList.remove("over"));
+pool.addEventListener("drop", e => {
+  e.preventDefault(); pool.classList.remove("over");
+  const id = e.dataTransfer.getData("text/plain");
+  const log = logs.find(l => l.id === id);
+  if (!log) return;
+  placeCard(log, "pool");
+});
+
+// Initial: all in pool, shuffled
+[...logs].sort(() => Math.random() - 0.5).forEach(l => placeCard(l, "pool"));
+
+continueBtn.addEventListener("click", () => {
+  if (done) return; done = true;
+  try { window.parent.postMessage({ type: "renjs-event", id: "log-vault-complete" }, "*"); } catch(e) {}
+});
+
+window.addEventListener("load", () => window.focus());
+</script>
+</body>
+</html>

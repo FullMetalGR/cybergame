@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="cybergame-common.css">
+<style>
+  html, body { background: transparent; overflow: hidden; }
+  .container { justify-content: center; align-items: center; }
+  .branded-panel {
+    background: rgba(6, 10, 20, 0.88);
+    border: 1px solid rgba(0, 212, 255, 0.45);
+    border-radius: 8px;
+    padding: 14px 24px;
+    box-shadow: 0 0 24px rgba(0,212,255,0.15);
+    display: flex; flex-direction: column; align-items: center;
+    gap: 10px; max-width: 1120px; width: 96%;
+  }
+  .title { font-size: 20px; color: #00d4ff; text-transform: uppercase; letter-spacing: 3px; }
+  .subtitle { font-size: 13px; color: rgba(224,230,240,0.65); text-align: center; }
+
+  .dcerl {
+    display: flex; gap: 6px; flex-wrap: wrap; justify-content: center;
+    padding: 6px 10px; border-radius: 6px;
+    background: rgba(0,212,255,0.04); border: 1px solid rgba(0,212,255,0.2);
+    font-size: 11px; color: rgba(224,230,240,0.75);
+    width: 100%;
+  }
+  .dcerl strong { color: #00d4ff; }
+
+  .slots, .pool {
+    display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
+    width: 100%; min-height: 84px;
+    padding: 8px; border-radius: 8px;
+    background: rgba(0,0,0,0.3); border: 1px dashed rgba(0,212,255,0.35);
+  }
+  .slot {
+    flex: 1 1 150px; max-width: 170px; min-height: 64px;
+    border: 1px solid rgba(0,212,255,0.3); border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    color: rgba(224,230,240,0.4); font-size: 12px;
+    background: rgba(0,212,255,0.03);
+    transition: all 0.2s ease;
+  }
+  .slot.over { background: rgba(0,212,255,0.12); border-color: #00d4ff; }
+  .slot.filled { color: transparent; background: transparent; border-style: solid; }
+  .slot-num { position: absolute; top: 2px; left: 4px; font-size: 10px; color: rgba(0,212,255,0.5); }
+  .slot-wrap { position: relative; flex: 1 1 150px; max-width: 170px; }
+
+  .card {
+    padding: 8px 10px; border-radius: 6px;
+    background: rgba(0,212,255,0.07);
+    border: 1px solid rgba(0,212,255,0.4);
+    color: #e0e6f0; font-size: 11px; line-height: 1.3;
+    cursor: grab; min-height: 48px;
+    user-select: none; flex: 1 1 150px; max-width: 170px;
+  }
+  .card:focus { outline: 2px solid #00d4ff; outline-offset: 2px; }
+  .card.dragging { opacity: 0.5; }
+  .card.placed-correct { border-color: #39ff14; background: rgba(57,255,20,0.08); }
+  .card.placed-wrong { border-color: #ff3366; background: rgba(255,51,102,0.08); }
+
+  .actions { display: flex; gap: 12px; }
+  .feedback {
+    width: 100%; padding: 8px 12px; border-radius: 6px;
+    font-size: 12px; line-height: 1.5; display: none;
+  }
+  .feedback.show { display: block; }
+  .feedback.correct { background: rgba(57,255,20,0.08); color: #39ff14; border: 1px solid rgba(57,255,20,0.3); }
+  .feedback.wrong { background: rgba(255,51,102,0.08); color: #ff3366; border: 1px solid rgba(255,51,102,0.3); }
+  .continue-btn { display: none; }
+  .continue-btn.visible { display: inline-block; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="branded-panel">
+    <div class="title">Response Sequencer</div>
+    <div class="subtitle">Place six actions in the best order: Detect → Contain → Eradicate → Recover → Verify → Learn.</div>
+
+    <div class="dcerl" aria-label="DCERL framework reference">
+      <span><strong>Detect</strong> spot the threat</span> ·
+      <span><strong>Contain</strong> stop damage</span> ·
+      <span><strong>Eradicate</strong> remove root cause</span> ·
+      <span><strong>Recover</strong> restore safe operation</span> ·
+      <span><strong>Learn</strong> document &amp; prevent recurrence</span>
+    </div>
+
+    <div class="slots" id="slots"></div>
+
+    <div style="font-size:12px;color:rgba(224,230,240,0.55);width:100%;text-align:center">Action cards</div>
+    <div class="pool" id="pool"></div>
+
+    <div class="feedback" id="feedback" role="status" aria-live="polite"></div>
+    <div class="actions">
+      <button class="btn btn-warning" id="checkBtn">Lock In Sequence</button>
+      <button class="btn btn-success continue-btn" id="continueBtn">Continue</button>
+    </div>
+  </div>
+</div>
+<script>
+// Per PDF: correct sequence 1→2→3→4→6→5
+// where card numbers are the cards as listed in the spec
+const cards = [
+  { id: 1, text: "Prioritize alert: external launches of ProfileActivity", correctSlot: 1, phase: "Detect" },
+  { id: 2, text: "Disable exported access for private components (lockdown)", correctSlot: 2, phase: "Contain" },
+  { id: 3, text: "Remove/redact sensitive logs and prevent future logging of secrets", correctSlot: 3, phase: "Eradicate" },
+  { id: 4, text: "Revoke exposed tokens and force re-authentication", correctSlot: 4, phase: "Recover" },
+  { id: 5, text: "Document root cause and update secure defaults", correctSlot: 6, phase: "Learn" },
+  { id: 6, text: "Confirm normal operation and monitor for repeated triggers", correctSlot: 5, phase: "Verify" }
+];
+
+const slotsEl = document.getElementById("slots");
+const poolEl = document.getElementById("pool");
+const feedbackEl = document.getElementById("feedback");
+const checkBtn = document.getElementById("checkBtn");
+const continueBtn = document.getElementById("continueBtn");
+const placement = {}; // slotIndex (1..6) -> card id
+let done = false;
+
+for (let i = 1; i <= 6; i++) {
+  const wrap = document.createElement("div");
+  wrap.className = "slot-wrap";
+  wrap.innerHTML = `<div class="slot-num">${i}</div><div class="slot" data-slot="${i}" aria-label="Sequence slot ${i}"></div>`;
+  slotsEl.appendChild(wrap);
+}
+
+function buildCard(card) {
+  const div = document.createElement("div");
+  div.className = "card";
+  div.draggable = true;
+  div.tabIndex = 0;
+  div.dataset.id = card.id;
+  div.setAttribute("role", "button");
+  div.setAttribute("aria-label", `Action card: ${card.text}`);
+  div.textContent = card.text;
+  div.addEventListener("dragstart", e => {
+    div.classList.add("dragging");
+    e.dataTransfer.setData("text/plain", card.id);
+  });
+  div.addEventListener("dragend", () => div.classList.remove("dragging"));
+  div.addEventListener("keydown", e => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      // cycle: put in next empty slot or return to pool
+      const inSlot = Object.entries(placement).find(([, id]) => id === card.id);
+      if (inSlot) {
+        // already placed — return to pool
+        removeFromSlot(Number(inSlot[0]));
+      } else {
+        const empty = [1,2,3,4,5,6].find(s => !placement[s]);
+        if (empty) moveToSlot(card, empty);
+      }
+    }
+  });
+  return div;
+}
+
+function removeFromSlot(slotIdx) {
+  const id = placement[slotIdx];
+  delete placement[slotIdx];
+  const slotEl = slotsEl.querySelector(`.slot[data-slot="${slotIdx}"]`);
+  slotEl.innerHTML = "";
+  slotEl.classList.remove("filled");
+  const card = cards.find(c => c.id === id);
+  if (card) poolEl.appendChild(buildCard(card));
+}
+
+function moveToSlot(card, slotIdx) {
+  // remove from existing
+  Object.entries(placement).forEach(([s, id]) => { if (id === card.id) removeFromSlot(Number(s)); });
+  // remove from pool
+  poolEl.querySelectorAll(".card").forEach(c => { if (Number(c.dataset.id) === card.id) c.remove(); });
+  // remove existing slot occupant
+  if (placement[slotIdx]) removeFromSlot(slotIdx);
+  // place
+  placement[slotIdx] = card.id;
+  const slotEl = slotsEl.querySelector(`.slot[data-slot="${slotIdx}"]`);
+  slotEl.innerHTML = "";
+  slotEl.appendChild(buildCard(card));
+  slotEl.classList.add("filled");
+}
+
+slotsEl.querySelectorAll(".slot").forEach(slotEl => {
+  slotEl.addEventListener("dragover", e => { e.preventDefault(); slotEl.classList.add("over"); });
+  slotEl.addEventListener("dragleave", () => slotEl.classList.remove("over"));
+  slotEl.addEventListener("drop", e => {
+    e.preventDefault(); slotEl.classList.remove("over");
+    const id = Number(e.dataTransfer.getData("text/plain"));
+    const card = cards.find(c => c.id === id);
+    if (!card) return;
+    moveToSlot(card, Number(slotEl.dataset.slot));
+  });
+});
+
+poolEl.addEventListener("dragover", e => e.preventDefault());
+poolEl.addEventListener("drop", e => {
+  e.preventDefault();
+  const id = Number(e.dataTransfer.getData("text/plain"));
+  // return to pool
+  Object.entries(placement).forEach(([s, p]) => { if (p === id) removeFromSlot(Number(s)); });
+});
+
+// Shuffle initial pool
+[...cards].sort(() => Math.random() - 0.5).forEach(c => poolEl.appendChild(buildCard(c)));
+
+checkBtn.addEventListener("click", () => {
+  // need all 6 placed
+  const filled = Object.keys(placement).length === 6;
+  if (!filled) {
+    feedbackEl.className = "feedback show wrong";
+    feedbackEl.textContent = "Place all six action cards before locking in.";
+    return;
+  }
+  let allCorrect = true;
+  for (let s = 1; s <= 6; s++) {
+    const card = cards.find(c => c.id === placement[s]);
+    const slotEl = slotsEl.querySelector(`.slot[data-slot="${s}"]`).querySelector(".card");
+    if (slotEl) {
+      slotEl.classList.remove("placed-correct", "placed-wrong");
+      if (card.correctSlot === s) slotEl.classList.add("placed-correct");
+      else { slotEl.classList.add("placed-wrong"); allCorrect = false; }
+    }
+  }
+  if (allCorrect) {
+    feedbackEl.className = "feedback show correct";
+    feedbackEl.textContent = "Chain broken. Damage stopped, root cause fixed, trust restored, lessons documented.";
+    continueBtn.classList.add("visible");
+    continueBtn.focus();
+  } else {
+    // hint: documentation too early?
+    const docId = 5;
+    const docSlot = Number(Object.entries(placement).find(([, id]) => id === docId)?.[0] || 0);
+    const hint = docSlot && docSlot < 6
+      ? "Documentation matters, but it doesn't stop the breach."
+      : "Stop damage first, then fix the cause, then restore trust.";
+    feedbackEl.className = "feedback show wrong";
+    feedbackEl.textContent = "Some steps are out of order. " + hint;
+  }
+});
+
+continueBtn.addEventListener("click", () => {
+  if (done) return; done = true;
+  try { window.parent.postMessage({ type: "renjs-event", id: "response-sequencer-complete" }, "*"); } catch(e) {}
+});
+
+window.addEventListener("load", () => window.focus());
+</script>
+</body>
+</html>

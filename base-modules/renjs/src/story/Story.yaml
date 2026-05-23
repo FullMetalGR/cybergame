@@ -1,0 +1,16 @@
+start:
+  - show park_1: WITH FADE
+  - show player: normal AT CENTER WITH FADE
+  - player says: Hello! This is a (bold)demo story line(end)!
+  - scene: endGame
+
+endGame:
+  - player says normal: Demo is over!
+  - hide ALL:
+  - effect ROLLINGCREDITS:
+    endGame: true
+    text:
+      - DEMO - CyberGame
+      - using RenJS
+      - null
+      - Template

@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Boot Nodes - AN-DR 01d</title>
+  <link rel="stylesheet" href="cybergame-common.css">
+  <style>
+    html, body {
+      background: transparent;
+      overflow: hidden;
+    }
+
+    .container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Both phases occupy the same space */
+    #phase1, #phase2 {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.6s ease;
+    }
+
+    #phase2 {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #phase1.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #phase2.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* Dark panel with neon border for text readability */
+    .neon-panel {
+      background: rgba(6, 10, 20, 0.85);
+      border: 1px solid rgba(0, 212, 255, 0.5);
+      border-radius: 8px;
+      padding: 30px 50px;
+      box-shadow: 0 0 20px rgba(0, 212, 255, 0.15), inset 0 0 30px rgba(0, 212, 255, 0.03);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* Phase 1 prompt */
+    .boot-prompt {
+      font-size: 20px;
+      color: #00d4ff;
+      text-shadow: 0 0 12px rgba(0, 212, 255, 0.5);
+      margin-bottom: 24px;
+      letter-spacing: 1px;
+      text-align: center;
+    }
+
+    .boot-prompt .key-hint {
+      display: inline-block;
+      background: rgba(0, 212, 255, 0.15);
+      border: 1px solid #00d4ff;
+      border-radius: 4px;
+      padding: 2px 10px;
+      font-size: 14px;
+      margin: 0 2px;
+    }
+
+    /* Phase 2 panel */
+    .phase2-panel {
+      background: rgba(6, 10, 20, 0.85);
+      border: 1px solid rgba(0, 212, 255, 0.5);
+      border-radius: 8px;
+      padding: 24px 40px 28px;
+      box-shadow: 0 0 20px rgba(0, 212, 255, 0.15), inset 0 0 30px rgba(0, 212, 255, 0.03);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* Circuit nodes */
+    .nodes-area {
+      display: flex;
+      gap: 60px;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      margin: 16px 0;
+    }
+
+    .circuit-node {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 40% 35%, #0d3d5c, #0a1a2a);
+      border: 2px solid #00d4ff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      transition: background 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
+      outline: none;
+    }
+
+    .circuit-node:hover:not(.activated),
+    .circuit-node:focus:not(.activated) {
+      box-shadow: 0 0 25px rgba(0, 212, 255, 0.8), 0 0 50px rgba(0, 212, 255, 0.3);
+    }
+
+    .circuit-node .node-icon {
+      font-size: 28px;
+      color: #00d4ff;
+      text-shadow: 0 0 10px rgba(0, 212, 255, 0.8);
+      transition: color 0.4s ease, text-shadow 0.4s ease;
+      pointer-events: none;
+      line-height: 1;
+    }
+
+    .circuit-node.activated {
+      background: radial-gradient(circle at 40% 35%, #0d4a0d, #0a2a0a);
+      border-color: #39ff14;
+      cursor: default;
+    }
+
+    .circuit-node.activated .node-icon {
+      color: #39ff14;
+      text-shadow: 0 0 10px rgba(57, 255, 20, 0.8);
+    }
+
+    /* Spark overlay */
+    .spark-ring {
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 90px; height: 90px;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      background: radial-gradient(circle, rgba(255,255,255,0.9), rgba(0,212,255,0.6), transparent 70%);
+      pointer-events: none;
+    }
+
+    /* Connection lines */
+    .node-connections {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .node-connections line {
+      stroke: rgba(0, 212, 255, 0.2);
+      stroke-width: 1.5;
+      stroke-dasharray: 6 4;
+      transition: stroke 0.4s ease;
+    }
+
+    .node-connections line.lit {
+      stroke: rgba(57, 255, 20, 0.5);
+      stroke-width: 2;
+      stroke-dasharray: none;
+    }
+
+    /* Arrow cue */
+    .arrow-cue {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 10px;
+      transition: opacity 0.4s ease;
+    }
+
+    .arrow-cue .arrow-text {
+      font-size: 13px;
+      color: #00d4ff;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 4px;
+      opacity: 0.8;
+    }
+
+    @keyframes bounceDown {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(8px); }
+    }
+
+    .arrow-cue .arrow-icon {
+      font-size: 26px;
+      color: #00d4ff;
+      text-shadow: 0 0 12px rgba(0, 212, 255, 0.6);
+      animation: bounceDown 1.2s ease-in-out infinite;
+    }
+
+    .arrow-cue.hidden { opacity: 0; }
+
+    .phase2-title {
+      font-size: 16px;
+      color: #e0e6f0;
+      text-align: center;
+      margin-bottom: 4px;
+      opacity: 0.9;
+    }
+
+    /* Status bar - more visible */
+    .status-bar {
+      margin-top: 16px;
+      font-size: 16px;
+      color: #a0b0c0;
+      letter-spacing: 1px;
+      text-align: center;
+      background: rgba(0, 212, 255, 0.08);
+      border: 1px solid rgba(0, 212, 255, 0.25);
+      border-radius: 4px;
+      padding: 8px 24px;
+      transition: all 0.3s ease;
+    }
+
+    .status-bar .count {
+      color: #00d4ff;
+      font-weight: bold;
+      text-shadow: 0 0 6px rgba(0, 212, 255, 0.5);
+    }
+
+    .status-bar.complete {
+      color: #39ff14;
+      text-shadow: 0 0 8px rgba(57, 255, 20, 0.5);
+      border-color: rgba(57, 255, 20, 0.4);
+      background: rgba(57, 255, 20, 0.08);
+    }
+
+    /* Completion flash */
+    @keyframes completionFlash {
+      0% { opacity: 0; }
+      20% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    .completion-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: radial-gradient(circle, rgba(57, 255, 20, 0.15), transparent 70%);
+      pointer-events: none;
+      animation: completionFlash 1.2s ease-out forwards;
+      z-index: 998;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- Phase 1: Power-up prompt -->
+    <div id="phase1">
+      <div class="neon-panel">
+        <p class="boot-prompt">
+          Press <span class="key-hint">Space</span> to power up AN-DR 01d
+        </p>
+        <button class="btn pulse" id="powerBtn" aria-label="Power up AN-DR 01d">
+          Initialize
+        </button>
+      </div>
+    </div>
+
+    <!-- Phase 2: Circuit nodes -->
+    <div id="phase2">
+      <div class="phase2-panel">
+        <p class="phase2-title">Stabilize the circuit nodes to bring AN-DR 01d online.</p>
+
+        <div class="arrow-cue" id="arrowCue" aria-hidden="true">
+          <span class="arrow-text">Click each node</span>
+          <span class="arrow-icon">&#9660;</span>
+        </div>
+
+        <div class="nodes-area" id="nodesArea" role="group" aria-label="Circuit nodes to activate">
+          <svg class="node-connections" id="connectionsSvg" aria-hidden="true">
+            <line id="line01" /><line id="line12" /><line id="line02" />
+          </svg>
+
+          <button class="circuit-node pulse glow-blue" id="node0" data-index="0"
+            aria-label="Circuit Node 1 - Click to stabilize">
+            <span class="node-icon">&#9678;</span>
+          </button>
+          <button class="circuit-node pulse glow-blue" id="node1" data-index="1"
+            aria-label="Circuit Node 2 - Click to stabilize">
+            <span class="node-icon">&#9678;</span>
+          </button>
+          <button class="circuit-node pulse glow-blue" id="node2" data-index="2"
+            aria-label="Circuit Node 3 - Click to stabilize">
+            <span class="node-icon">&#9678;</span>
+          </button>
+        </div>
+
+        <div class="status-bar" id="statusBar">
+          Nodes online: <span class="count" id="activatedCount">0</span> / 3
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    /* ===== Messaging API ===== */
+    const Events = {
+      handlers: {},
+      init() {
+        window.addEventListener("message", (event) => {
+          if (event.origin !== window.location.origin) return;
+          if (event.data.type !== "renjs-event") return;
+          const { id, args, scope } = event.data;
+          (this.handlers[id] || []).forEach((fn) => fn.apply(scope, args));
+        });
+      },
+      on(id, fn) {
+        this.handlers[id] = this.handlers[id] || [];
+        this.handlers[id].push(fn);
+        this.init();
+      },
+    };
+
+    const Game = {
+      Events,
+      onMessage(id, fn) { Events.on(id, fn); },
+      sendMessage(id, args = [], scope = {}) {
+        window.parent.postMessage(
+          { type: "renjs-event", id, args, scope },
+          window.location.origin
+        );
+      },
+    };
+
+    /* ===== Page Logic ===== */
+    const phase1 = document.getElementById("phase1");
+    const phase2 = document.getElementById("phase2");
+    const powerBtn = document.getElementById("powerBtn");
+    const arrowCue = document.getElementById("arrowCue");
+    const statusBar = document.getElementById("statusBar");
+    const activatedCountEl = document.getElementById("activatedCount");
+    const nodes = [
+      document.getElementById("node0"),
+      document.getElementById("node1"),
+      document.getElementById("node2"),
+    ];
+
+    let booted = false;
+    let activatedCount = 0;
+
+    function bootUp() {
+      if (booted) return;
+      booted = true;
+      phase1.classList.add("hidden");
+      phase2.classList.add("active");
+      requestAnimationFrame(() => {
+        updateConnectionLines();
+        nodes[0].focus();
+      });
+    }
+
+    powerBtn.addEventListener("click", bootUp);
+    phase1.addEventListener("click", bootUp);
+    document.addEventListener("keydown", (e) => {
+      if (e.code === "Space" && !booted) {
+        e.preventDefault();
+        bootUp();
+      }
+    });
+
+    /* Auto-focus so keyboard works inside iframe */
+    window.addEventListener("load", () => {
+      window.focus();
+      powerBtn.focus();
+    });
+
+    function activateNode(node) {
+      if (node.classList.contains("activated")) return;
+
+      const sparkEl = document.createElement("span");
+      sparkEl.className = "spark-ring spark";
+      sparkEl.setAttribute("aria-hidden", "true");
+      node.appendChild(sparkEl);
+      setTimeout(() => sparkEl.remove(), 500);
+
+      node.classList.remove("pulse", "glow-blue");
+      node.classList.add("activated", "glow-green");
+      node.setAttribute("aria-label",
+        node.getAttribute("aria-label").replace("Click to stabilize", "Stabilized"));
+      node.setAttribute("aria-pressed", "true");
+
+      activatedCount++;
+      activatedCountEl.textContent = activatedCount;
+      lightConnections();
+
+      if (activatedCount >= 3) onAllNodesActivated();
+    }
+
+    nodes.forEach((node) => {
+      node.addEventListener("click", () => activateNode(node));
+      node.addEventListener("keydown", (e) => {
+        if (e.code === "Enter" || e.code === "Space") {
+          e.preventDefault();
+          activateNode(node);
+        }
+      });
+    });
+
+    function lightConnections() {
+      const n0 = nodes[0].classList.contains("activated");
+      const n1 = nodes[1].classList.contains("activated");
+      const n2 = nodes[2].classList.contains("activated");
+      if (n0 && n1) document.getElementById("line01").classList.add("lit");
+      if (n1 && n2) document.getElementById("line12").classList.add("lit");
+      if (n0 && n2) document.getElementById("line02").classList.add("lit");
+    }
+
+    function updateConnectionLines() {
+      const area = document.getElementById("nodesArea");
+      const svg = document.getElementById("connectionsSvg");
+      if (!area || !svg) return;
+      const areaRect = area.getBoundingClientRect();
+
+      function center(el) {
+        const r = el.getBoundingClientRect();
+        return {
+          x: r.left + r.width / 2 - areaRect.left,
+          y: r.top + r.height / 2 - areaRect.top,
+        };
+      }
+
+      const c0 = center(nodes[0]), c1 = center(nodes[1]), c2 = center(nodes[2]);
+      function setLine(id, a, b) {
+        const l = document.getElementById(id);
+        l.setAttribute("x1", a.x); l.setAttribute("y1", a.y);
+        l.setAttribute("x2", b.x); l.setAttribute("y2", b.y);
+      }
+      setLine("line01", c0, c1);
+      setLine("line12", c1, c2);
+      setLine("line02", c0, c2);
+    }
+
+    window.addEventListener("resize", () => { if (booted) updateConnectionLines(); });
+
+    function onAllNodesActivated() {
+      arrowCue.classList.add("hidden");
+      statusBar.classList.add("complete");
+      statusBar.innerHTML = "All nodes online &mdash; AN-DR 01d powering up...";
+
+      const overlay = document.createElement("div");
+      overlay.className = "completion-overlay";
+      overlay.setAttribute("aria-hidden", "true");
+      document.body.appendChild(overlay);
+      setTimeout(() => overlay.remove(), 1300);
+
+      setTimeout(() => {
+        Game.sendMessage("boot-nodes-complete");
+      }, 1200);
+    }
+  </script>
+</body>
+</html>

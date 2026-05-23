@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Category Sort</title>
+  <link rel="stylesheet" href="cybergame-common.css">
+  <style>
+    html, body {
+      background: transparent;
+      overflow: hidden;
+    }
+
+    /* Centering wrapper */
+    .page-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    /* Dark panel */
+    .panel {
+      background: rgba(6, 10, 20, 0.88);
+      border: 1px solid rgba(0, 212, 255, 0.5);
+      border-radius: 8px;
+      padding: 20px 36px 18px;
+      box-shadow: 0 0 20px rgba(0, 212, 255, 0.15), inset 0 0 30px rgba(0, 212, 255, 0.03);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      max-width: 620px;
+      max-height: 96%;
+      overflow: hidden;
+    }
+
+    h2 {
+      font-size: 17px;
+      margin-bottom: 4px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .subtitle {
+      font-size: 12px;
+      color: #7a8ba8;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+
+    /* ── Phase containers ── */
+    .phase {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: max-height 0.5s ease, opacity 0.4s ease, margin 0.5s ease;
+      overflow: hidden;
+    }
+
+    .phase.collapsed {
+      max-height: 0 !important;
+      opacity: 0;
+      margin: 0;
+      pointer-events: none;
+    }
+
+    #phase2 {
+      display: none;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    #phase2.active {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      opacity: 1;
+    }
+
+    /* ── Card pool ── */
+    .pool-label {
+      font-size: 10px;
+      color: #4a6a8a;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 5px;
+    }
+
+    .card-pool {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 6px;
+      min-height: 44px;
+      padding: 8px 10px;
+      border: 1px dashed rgba(0, 212, 255, 0.12);
+      border-radius: 6px;
+      background: rgba(0, 10, 20, 0.4);
+      width: 520px;
+      max-width: 100%;
+      margin-bottom: 8px;
+    }
+
+    /* ── Draggable cards ── */
+    .draggable.card {
+      padding: 7px 13px;
+      margin: 0;
+      font-size: 12px;
+      letter-spacing: 1px;
+      border: 1px solid rgba(0, 212, 255, 0.6);
+      background: linear-gradient(135deg, #081828, #0c2e4e);
+      box-shadow: 0 0 8px rgba(0, 212, 255, 0.15), inset 0 1px 0 rgba(0, 212, 255, 0.1);
+      white-space: nowrap;
+      transition: all 0.2s ease, transform 0.15s ease;
+    }
+
+    .draggable.card:hover,
+    .draggable.card:focus {
+      border-color: #00d4ff;
+      box-shadow: 0 0 16px rgba(0, 212, 255, 0.45);
+      transform: translateY(-2px);
+      outline: none;
+    }
+
+    .draggable.card.dragging {
+      opacity: 0.4;
+      transform: scale(0.95);
+    }
+
+    .draggable.card.selected-kb {
+      border-color: #ffd700;
+      box-shadow: 0 0 18px rgba(255, 215, 0, 0.5);
+    }
+
+    .draggable.card.locked {
+      cursor: default;
+      pointer-events: none;
+      border: none;
+      background: transparent;
+      box-shadow: none;
+      color: #39ff14;
+      text-shadow: 0 0 6px rgba(57, 255, 20, 0.5);
+    }
+
+    /* ── Category zones ── */
+    .categories {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      width: 520px;
+      max-width: 100%;
+      margin-bottom: 6px;
+    }
+
+    .category-zone {
+      border: 1px solid rgba(0, 212, 255, 0.2);
+      border-radius: 6px;
+      background: rgba(0, 14, 28, 0.5);
+      padding: 6px;
+      min-height: 80px;
+      display: flex;
+      flex-direction: column;
+      transition: all 0.25s ease;
+    }
+
+    .category-zone .zone-title {
+      font-size: 11px;
+      color: #00d4ff;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      text-align: center;
+      margin-bottom: 4px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid rgba(0, 212, 255, 0.12);
+      text-shadow: 0 0 6px rgba(0, 212, 255, 0.3);
+    }
+
+    .category-zone .zone-slots {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-height: 32px;
+    }
+
+    .category-zone .drop-zone.cat-slot {
+      flex: 1;
+      min-height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 20, 40, 0.4);
+      border: 1px dashed rgba(0, 212, 255, 0.15);
+      border-radius: 4px;
+      transition: all 0.25s ease;
+    }
+
+    .category-zone .drop-zone.cat-slot.drag-over {
+      border-color: #00d4ff;
+      border-style: solid;
+      background: rgba(0, 212, 255, 0.1);
+      box-shadow: inset 0 0 14px rgba(0, 212, 255, 0.1), 0 0 10px rgba(0, 212, 255, 0.2);
+    }
+
+    .category-zone .drop-zone.cat-slot.occupied {
+      border-style: solid;
+      border-color: #39ff14;
+      background: rgba(57, 255, 20, 0.06);
+      box-shadow: 0 0 10px rgba(57, 255, 20, 0.2);
+    }
+
+    .category-zone.full {
+      border-color: rgba(57, 255, 20, 0.3);
+      box-shadow: 0 0 10px rgba(57, 255, 20, 0.1);
+    }
+
+    @keyframes flash-incorrect {
+      0%   { border-color: #ff3366; background: rgba(255, 51, 102, 0.15); box-shadow: 0 0 18px rgba(255, 51, 102, 0.4); }
+      100% { border-color: rgba(0, 212, 255, 0.15); background: rgba(0, 20, 40, 0.4); box-shadow: none; }
+    }
+
+    .drop-zone.cat-slot.flash-wrong {
+      animation: flash-incorrect 0.6s ease-out forwards;
+    }
+
+    /* ── Feedback area ── */
+    .feedback-area {
+      min-height: 30px;
+      margin-bottom: 6px;
+      text-align: center;
+      font-size: 12px;
+      max-width: 520px;
+      line-height: 1.4;
+      padding: 4px 12px;
+      border-radius: 4px;
+      background: rgba(0, 14, 28, 0.5);
+      border: 1px solid rgba(0, 212, 255, 0.12);
+    }
+
+    .feedback-area:empty {
+      background: transparent;
+      border-color: transparent;
+    }
+
+    /* ── Keyboard instructions ── */
+    .kb-instructions {
+      font-size: 10px;
+      color: #4a6a8a;
+      text-align: center;
+      line-height: 1.5;
+      max-width: 480px;
+      margin-bottom: 6px;
+    }
+
+    .kb-instructions kbd {
+      display: inline-block;
+      background: rgba(0, 212, 255, 0.1);
+      border: 1px solid rgba(0, 212, 255, 0.25);
+      border-radius: 3px;
+      padding: 1px 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 10px;
+      color: #00d4ff;
+    }
+
+    /* ── Phase 2: MCQ section ── */
+    .mcq-section-title {
+      font-size: 15px;
+      margin-bottom: 14px;
+      text-align: center;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .mcq-block {
+      margin-bottom: 16px;
+      width: 520px;
+      max-width: 100%;
+    }
+
+    .mcq-block .mcq-question {
+      font-size: 13px;
+      color: #00d4ff;
+      margin-bottom: 8px;
+      text-shadow: 0 0 6px rgba(0, 212, 255, 0.3);
+    }
+
+    .mcq-block .mcq-option {
+      padding: 10px 16px;
+      margin: 5px 0;
+      font-size: 13px;
+      background: linear-gradient(135deg, #0a1a2a, #0d2d4d);
+      border: 1px solid rgba(0, 212, 255, 0.3);
+      border-radius: 6px;
+      width: 100%;
+      text-align: left;
+    }
+
+    .mcq-block .mcq-feedback {
+      min-height: 18px;
+      margin-top: 6px;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .mcq-option:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    /* ── Completion banner ── */
+    @keyframes glow-pulse {
+      0%, 100% { text-shadow: 0 0 10px rgba(57, 255, 20, 0.5); }
+      50% { text-shadow: 0 0 25px rgba(57, 255, 20, 0.9), 0 0 40px rgba(57, 255, 20, 0.3); }
+    }
+
+    .complete-banner {
+      display: none;
+      color: #39ff14;
+      font-size: 15px;
+      font-weight: bold;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-top: 8px;
+      animation: glow-pulse 1.8s ease-in-out infinite;
+    }
+
+    .complete-banner.show {
+      display: block;
+    }
+
+    /* ── Completion flash overlay ── */
+    @keyframes completionFlash {
+      0% { opacity: 0; }
+      20% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    .completion-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: radial-gradient(circle, rgba(57, 255, 20, 0.15), transparent 70%);
+      pointer-events: none;
+      animation: completionFlash 1.2s ease-out forwards;
+      z-index: 998;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page-wrapper">
+    <div class="panel">
+
+      <h2 aria-label="Category Sort exercise">Category Sort</h2>
+      <p class="subtitle">Sort each card into the correct Android category</p>
+
+      <!-- Phase 1: Drag and drop -->
+      <div class="phase" id="phase1" role="region" aria-label="Drag and drop category sorting">
+
+        <!-- Card pool -->
+        <p class="pool-label" id="pool-label">Cards</p>
+        <div class="card-pool" id="card-pool" role="listbox" aria-labelledby="pool-label" aria-label="Draggable cards to sort into categories"></div>
+
+        <!-- Feedback -->
+        <div class="feedback-area" id="feedback" role="status" aria-live="polite"></div>
+
+        <!-- Category drop zones -->
+        <div class="categories" role="group" aria-label="Category drop zones">
+          <div class="category-zone" id="cat-layer" data-category="layer" aria-label="Layer category">
+            <span class="zone-title">1 - Layer</span>
+            <div class="zone-slots">
+              <div class="drop-zone cat-slot" data-category="layer" data-slot-index="0" role="listitem" aria-label="Layer slot 1, empty"></div>
+              <div class="drop-zone cat-slot" data-category="layer" data-slot-index="1" role="listitem" aria-label="Layer slot 2, empty"></div>
+            </div>
+          </div>
+
+          <div class="category-zone" id="cat-component" data-category="component" aria-label="Component category">
+            <span class="zone-title">2 - Component</span>
+            <div class="zone-slots">
+              <div class="drop-zone cat-slot" data-category="component" data-slot-index="0" role="listitem" aria-label="Component slot 1, empty"></div>
+              <div class="drop-zone cat-slot" data-category="component" data-slot-index="1" role="listitem" aria-label="Component slot 2, empty"></div>
+            </div>
+          </div>
+
+          <div class="category-zone" id="cat-communication" data-category="communication" aria-label="Communication category">
+            <span class="zone-title">3 - Communication</span>
+            <div class="zone-slots">
+              <div class="drop-zone cat-slot" data-category="communication" data-slot-index="0" role="listitem" aria-label="Communication slot 1, empty"></div>
+              <div class="drop-zone cat-slot" data-category="communication" data-slot-index="1" role="listitem" aria-label="Communication slot 2, empty"></div>
+            </div>
+          </div>
+
+          <div class="category-zone" id="cat-lifecycle" data-category="lifecycle" aria-label="Lifecycle category">
+            <span class="zone-title">4 - Lifecycle</span>
+            <div class="zone-slots">
+              <div class="drop-zone cat-slot" data-category="lifecycle" data-slot-index="0" role="listitem" aria-label="Lifecycle slot 1, empty"></div>
+              <div class="drop-zone cat-slot" data-category="lifecycle" data-slot-index="1" role="listitem" aria-label="Lifecycle slot 2, empty"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Keyboard instructions -->
+        <p class="kb-instructions" aria-label="Keyboard instructions">
+          <kbd>Tab</kbd> focus card &middot; <kbd>Enter</kbd> select &middot;
+          <kbd>1</kbd>&ndash;<kbd>4</kbd> pick category &middot;
+          <kbd>Enter</kbd> confirm
+        </p>
+      </div>
+
+      <!-- Phase 2: MCQ follow-up questions (hidden until sorting complete) -->
+      <div class="phase" id="phase2" role="region" aria-label="Follow-up multiple choice questions">
+
+        <h3 class="mcq-section-title">Follow-up Questions</h3>
+
+        <!-- MCQ 1 -->
+        <div class="mcq-block" id="mcq1-block" aria-label="Question 1">
+          <p class="mcq-question" id="mcq1-question">Sharing text to any capable app is usually:</p>
+          <button class="mcq-option" data-mcq="1" data-value="A" aria-label="Option A: Explicit Intent" role="radio" aria-checked="false">A) Explicit Intent</button>
+          <button class="mcq-option" data-mcq="1" data-value="B" aria-label="Option B: Implicit Intent" role="radio" aria-checked="false">B) Implicit Intent</button>
+          <div class="mcq-feedback" id="mcq1-feedback" role="status" aria-live="polite"></div>
+        </div>
+
+        <!-- MCQ 2 -->
+        <div class="mcq-block" id="mcq2-block" aria-label="Question 2">
+          <p class="mcq-question" id="mcq2-question">AndroidManifest.xml is mainly used to:</p>
+          <button class="mcq-option" data-mcq="2" data-value="A" aria-label="Option A: Store passwords" role="radio" aria-checked="false">A) Store passwords</button>
+          <button class="mcq-option" data-mcq="2" data-value="B" aria-label="Option B: Declare components and permissions" role="radio" aria-checked="false">B) Declare components and permissions</button>
+          <button class="mcq-option" data-mcq="2" data-value="C" aria-label="Option C: Set runtime notification text" role="radio" aria-checked="false">C) Set runtime notification text</button>
+          <div class="mcq-feedback" id="mcq2-feedback" role="status" aria-live="polite"></div>
+        </div>
+      </div>
+
+      <!-- Completion banner -->
+      <div class="complete-banner" id="complete-banner" role="status" aria-label="All tasks complete">Module Complete</div>
+
+    </div>
+  </div>
+
+  <script>
+    /* ===== Messaging API ===== */
+    const Events = {
+      handlers: {},
+      init() {
+        window.addEventListener("message", (event) => {
+          if (event.origin !== window.location.origin) return;
+          if (event.data.type !== "renjs-event") return;
+          const { id, args, scope } = event.data;
+          (this.handlers[id] || []).forEach((fn) => fn.apply(scope, args));
+        });
+      },
+      on(id, fn) {
+        this.handlers[id] = this.handlers[id] || [];
+        this.handlers[id].push(fn);
+        this.init();
+      },
+    };
+
+    const Game = {
+      Events,
+      onMessage(id, fn) { Events.on(id, fn); },
+      sendMessage(id, args = [], scope = {}) {
+        window.parent.postMessage(
+          { type: "renjs-event", id, args, scope },
+          window.location.origin
+        );
+      },
+    };
+
+    /* ===== Data ===== */
+
+    const CARDS = [
+      "Linux Kernel",
+      "Activity",
+      "Implicit Intent",
+      "onCreate()",
+      "Application Framework",
+      "Service",
+      "Explicit Intent",
+      "onPause()",
+    ];
+
+    const CORRECT_MAP = {
+      "Linux Kernel": "layer",
+      "Application Framework": "layer",
+      "Activity": "component",
+      "Service": "component",
+      "Explicit Intent": "communication",
+      "Implicit Intent": "communication",
+      "onCreate()": "lifecycle",
+      "onPause()": "lifecycle",
+    };
+
+    const WRONG_FEEDBACK = {
+      "Linux Kernel": "The Kernel manages hardware at the OS level, below all app code.",
+      "Application Framework": "The Framework is the command deck, APIs and services above Runtime and below Apps.",
+      "Activity": "These are building blocks declared in the Manifest.",
+      "Service": "These are building blocks declared in the Manifest.",
+      "Explicit Intent": "Intents are the messaging protocol between components and apps.",
+      "Implicit Intent": "Intents are the messaging protocol between components and apps.",
+      "onCreate()": "These are callback methods the system calls to manage Activity state.",
+      "onPause()": "These are callback methods the system calls to manage Activity state.",
+    };
+
+    const CATEGORY_NUMBERS = {
+      "1": "layer",
+      "2": "component",
+      "3": "communication",
+      "4": "lifecycle",
+    };
+
+    /* ===== State ===== */
+    let placedCards = {};
+    let categoryCounts = { layer: 0, component: 0, communication: 0, lifecycle: 0 };
+    let kbSelectedCard = null;
+    let sortingComplete = false;
+    let mcq1Correct = false;
+    let mcq2Correct = false;
+
+    /* ===== DOM refs ===== */
+    const pool = document.getElementById("card-pool");
+    const feedbackEl = document.getElementById("feedback");
+    const phase1 = document.getElementById("phase1");
+    const phase2 = document.getElementById("phase2");
+    const completeBanner = document.getElementById("complete-banner");
+
+    /* ===== Helpers ===== */
+
+    function shuffle(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function showFeedback(text, type) {
+      feedbackEl.className = "feedback-area " + (type === "correct" ? "feedback-correct" : "feedback-incorrect");
+      feedbackEl.textContent = text;
+    }
+
+    function clearFeedback() {
+      feedbackEl.className = "feedback-area";
+      feedbackEl.textContent = "";
+    }
+
+    function createCard(name) {
+      const el = document.createElement("div");
+      el.className = "draggable card fade-in";
+      el.textContent = name;
+      el.draggable = true;
+      el.tabIndex = 0;
+      el.setAttribute("role", "option");
+      el.setAttribute("aria-label", "Card: " + name);
+      el.dataset.card = name;
+
+      el.addEventListener("dragstart", onDragStart);
+      el.addEventListener("dragend", onDragEnd);
+      el.addEventListener("keydown", onCardKeydown);
+
+      return el;
+    }
+
+    function populatePool() {
+      pool.innerHTML = "";
+      const order = shuffle(CARDS.filter((n) => !placedCards[n]));
+      order.forEach((name) => pool.appendChild(createCard(name)));
+    }
+
+    function returnCardToPool(name) {
+      if (!cardInPool(name)) {
+        pool.appendChild(createCard(name));
+      }
+    }
+
+    function removeCardFromPool(name) {
+      const cards = pool.querySelectorAll(".card");
+      cards.forEach((c) => {
+        if (c.dataset.card === name) c.remove();
+      });
+    }
+
+    function cardInPool(name) {
+      return !!pool.querySelector('.card[data-card="' + CSS.escape(name) + '"]');
+    }
+
+    function findFreeSlot(category) {
+      const zone = document.getElementById("cat-" + category);
+      if (!zone) return null;
+      const slots = zone.querySelectorAll(".drop-zone.cat-slot");
+      for (const slot of slots) {
+        if (!slot.classList.contains("occupied")) return slot;
+      }
+      return null;
+    }
+
+    /* ===== Placement logic ===== */
+
+    function attemptPlace(category, cardName) {
+      if (sortingComplete) return;
+      if (placedCards[cardName]) return;
+
+      const correctCategory = CORRECT_MAP[cardName];
+
+      if (category === correctCategory) {
+        const slot = findFreeSlot(category);
+        if (!slot) return;
+
+        placedCards[cardName] = category;
+        categoryCounts[category]++;
+
+        const placed = createCard(cardName);
+        placed.draggable = false;
+        placed.classList.add("locked");
+        placed.tabIndex = -1;
+        slot.appendChild(placed);
+        slot.classList.add("occupied");
+        slot.setAttribute("aria-label", slot.getAttribute("aria-label").replace("empty", cardName));
+
+        removeCardFromPool(cardName);
+        showFeedback("Correct! " + cardName + " belongs in " + capitalize(category) + ".", "correct");
+
+        if (categoryCounts[category] >= 2) {
+          document.getElementById("cat-" + category).classList.add("full");
+        }
+
+        checkSortComplete();
+      } else {
+        const slot = findFreeSlot(category);
+        if (slot) {
+          slot.classList.add("flash-wrong");
+          slot.addEventListener("animationend", () => slot.classList.remove("flash-wrong"), { once: true });
+        }
+
+        if (!cardInPool(cardName)) {
+          returnCardToPool(cardName);
+        }
+
+        showFeedback(WRONG_FEEDBACK[cardName], "incorrect");
+      }
+    }
+
+    function capitalize(str) {
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    function checkSortComplete() {
+      if (Object.keys(placedCards).length === 8) {
+        sortingComplete = true;
+        showFeedback("All cards sorted correctly!", "correct");
+
+        // Wait so user can read feedback, then transition to Phase 2
+        setTimeout(() => {
+          // Collapse Phase 1
+          phase1.classList.add("collapsed");
+
+          // Show Phase 2 after collapse animation
+          setTimeout(() => {
+            phase2.classList.add("active");
+            const firstOption = phase2.querySelector(".mcq-option");
+            if (firstOption) firstOption.focus();
+          }, 500);
+        }, 2500);
+      }
+    }
+
+    /* ===== Drag-and-drop handlers ===== */
+
+    let draggedName = null;
+
+    function onDragStart(e) {
+      draggedName = e.target.dataset.card;
+      e.target.classList.add("dragging");
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", draggedName);
+    }
+
+    function onDragEnd(e) {
+      e.target.classList.remove("dragging");
+      draggedName = null;
+    }
+
+    const allSlots = document.querySelectorAll(".drop-zone.cat-slot");
+
+    allSlots.forEach((slot) => {
+      slot.addEventListener("dragover", (e) => {
+        if (slot.classList.contains("occupied")) return;
+        const cat = slot.dataset.category;
+        if (categoryCounts[cat] >= 2) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        slot.classList.add("drag-over");
+      });
+
+      slot.addEventListener("dragleave", () => {
+        slot.classList.remove("drag-over");
+      });
+
+      slot.addEventListener("drop", (e) => {
+        e.preventDefault();
+        slot.classList.remove("drag-over");
+        const name = e.dataTransfer.getData("text/plain");
+        if (!name) return;
+
+        removeCardFromPool(name);
+        attemptPlace(slot.dataset.category, name);
+      });
+    });
+
+    /* ===== Keyboard interaction ===== */
+
+    function clearKbSelection() {
+      if (kbSelectedCard) {
+        kbSelectedCard.classList.remove("selected-kb");
+        kbSelectedCard = null;
+      }
+    }
+
+    function onCardKeydown(e) {
+      const card = e.currentTarget;
+
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        if (kbSelectedCard === card) {
+          clearKbSelection();
+          clearFeedback();
+          return;
+        }
+        clearKbSelection();
+        kbSelectedCard = card;
+        card.classList.add("selected-kb");
+        showFeedback("Card selected. Press 1-4 to pick a category, Enter to confirm.", "correct");
+        return;
+      }
+    }
+
+    let kbTargetCategory = null;
+
+    document.addEventListener("keydown", (e) => {
+      if (sortingComplete) return;
+      if (!kbSelectedCard) return;
+
+      const num = e.key;
+      if (num >= "1" && num <= "4") {
+        e.preventDefault();
+        const category = CATEGORY_NUMBERS[num];
+        if (categoryCounts[category] >= 2) {
+          showFeedback(capitalize(category) + " is already full.", "incorrect");
+          return;
+        }
+        kbTargetCategory = category;
+
+        document.querySelectorAll(".category-zone").forEach((z) => {
+          z.querySelectorAll(".cat-slot").forEach((s) => s.classList.remove("drag-over"));
+        });
+        const freeSlot = findFreeSlot(category);
+        if (freeSlot) freeSlot.classList.add("drag-over");
+
+        showFeedback("Targeting " + capitalize(category) + ". Press Enter to drop.", "correct");
+        return;
+      }
+
+      if (e.key === "Enter" && kbTargetCategory !== null) {
+        e.preventDefault();
+        document.querySelectorAll(".cat-slot").forEach((s) => s.classList.remove("drag-over"));
+        const name = kbSelectedCard.dataset.card;
+        removeCardFromPool(name);
+        clearKbSelection();
+        attemptPlace(kbTargetCategory, name);
+        kbTargetCategory = null;
+        return;
+      }
+
+      if (e.key === "Escape") {
+        e.preventDefault();
+        document.querySelectorAll(".cat-slot").forEach((s) => s.classList.remove("drag-over"));
+        clearKbSelection();
+        kbTargetCategory = null;
+        clearFeedback();
+      }
+    });
+
+    /* ===== MCQ Logic ===== */
+
+    const MCQ_ANSWERS = {
+      "1": {
+        correct: "B",
+        feedback: {
+          "A": "Explicit Intents target a specific component. Sharing to any capable app is implicit.",
+        },
+      },
+      "2": {
+        correct: "B",
+        feedback: {
+          "A": "Passwords are never stored in the manifest.",
+          "C": "Notification text is dynamic runtime data.",
+        },
+      },
+    };
+
+    document.querySelectorAll(".mcq-option").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const mcqId = btn.dataset.mcq;
+        const value = btn.dataset.value;
+        const answerData = MCQ_ANSWERS[mcqId];
+        const feedbackDiv = document.getElementById("mcq" + mcqId + "-feedback");
+
+        if ((mcqId === "1" && mcq1Correct) || (mcqId === "2" && mcq2Correct)) return;
+
+        const siblings = document.querySelectorAll('.mcq-option[data-mcq="' + mcqId + '"]');
+
+        if (value === answerData.correct) {
+          btn.classList.add("selected-correct");
+          btn.setAttribute("aria-checked", "true");
+          feedbackDiv.className = "mcq-feedback feedback-msg correct";
+          feedbackDiv.textContent = "Correct!";
+
+          siblings.forEach((s) => {
+            s.disabled = true;
+            s.tabIndex = -1;
+          });
+
+          if (mcqId === "1") mcq1Correct = true;
+          if (mcqId === "2") mcq2Correct = true;
+
+          checkAllComplete();
+        } else {
+          btn.classList.add("selected-incorrect");
+          btn.setAttribute("aria-checked", "false");
+          const wrongMsg = answerData.feedback[value] || "That is not correct. Try again.";
+          feedbackDiv.className = "mcq-feedback feedback-msg incorrect";
+          feedbackDiv.textContent = wrongMsg;
+
+          setTimeout(() => {
+            btn.classList.remove("selected-incorrect");
+            feedbackDiv.className = "mcq-feedback";
+            feedbackDiv.textContent = "";
+          }, 2000);
+        }
+      });
+    });
+
+    function checkAllComplete() {
+      if (mcq1Correct && mcq2Correct) {
+        completeBanner.classList.add("show");
+
+        const overlay = document.createElement("div");
+        overlay.className = "completion-overlay";
+        overlay.setAttribute("aria-hidden", "true");
+        document.body.appendChild(overlay);
+        setTimeout(() => overlay.remove(), 1300);
+
+        setTimeout(() => {
+          Game.sendMessage("category-sort-complete");
+        }, 600);
+      }
+    }
+
+    /* ===== Init ===== */
+    populatePool();
+  </script>
+</body>
+</html>

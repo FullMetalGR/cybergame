@@ -1,0 +1,35 @@
+
+@font-face {
+    font-family: 'font_anonymous_pro';
+    src: url('fonts/anonymouspro-regular.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'font_anonymous_pro';
+    src: url('fonts/anonymouspro-bold.ttf') format('truetype');
+    font-weight: bold;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'font_anonymous_pro';
+    src: url('fonts/anonymouspro-italic.ttf') format('truetype');
+    font-weight: normal;
+    font-style: italic;
+}
+
+@font-face {
+    font-family: 'font_anonymous_pro';
+    src: url('fonts/anonymouspro-bolditalic.ttf') format('truetype');
+    font-weight: bold;
+    font-style: italic;
+}
+
+@font-face {
+    font-family: 'font_majormonodisplay';
+    src: url('fonts/majormonodisplay-regular.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}

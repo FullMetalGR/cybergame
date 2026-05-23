@@ -1,0 +1,513 @@
+####################################################################################################
+#                                                                                                  #
+#           SCENARIO 2: SECURE UPGRADE - ANDROID DEFENCE PROTOCOLS                                 #
+#                                                                                                  #
+####################################################################################################
+
+start:
+  - call ProgressBar: LOAD
+    steps: 10
+    step: 1
+  - call ProgressBar: SHOW
+  - show bg_retrofitbay: WITH FADE
+  # Narrative intro
+  - call CustomText: "Inside Ker's retrofit bay aboard the scavenger freighter Lumen Drift. A console flashes: SECURITY POSTURE: UNKNOWN. Outside the viewport, a patrol cruiser passes slowly."
+  # Characters
+  - show android: online AT CENTER WITH FADE
+  - show ker: normal AT LEFT WITH FADE
+  # Dialogue
+  - ker says: "Foundation restored. Now we harden you — because in this sector, everything gets probed."
+  - android says: "Define hardening."
+  - ker says: "Hardening means reducing attack surface and protecting sensitive data by design."
+  - show android: alert AT CENTER WITH CUT
+  - android says: "Threat presence detected?"
+  - show ker: concerned AT LEFT WITH CUT
+  - ker says: "Always. You'll follow Defence Protocols: Least Privilege, Secure Storage, No Sensitive Logs, and Controlled Exposure."
+  - show android: online AT CENTER WITH CUT
+  - android says: "Initiate upgrade sequence. I will comply."
+  - show ker: explaining AT LEFT WITH CUT
+  - ker says: "By the end of this module, you'll be able to: apply least privilege by removing unnecessary permissions, select the right storage approach for sensitive data, sanitize logs to prevent information leaks, and control which components are exposed to other apps."
+  # Side Panels
+  - call SidePanel:
+    dontwait: true
+    content:
+      - type: h4
+        html: <i class="fa-solid fa-note-sticky"></i> Notes & Clues
+      - type: p
+        md: "**What Android Security Means**"
+      - type: p
+        md: "Android security is about preventing unauthorized access, data leaks, and misuse of app components."
+      - type: p
+        md: "Best practices reduce risk even if something goes wrong (lost device, malicious app, network attack)."
+      - type: p
+        md: "This module teaches habits that developers apply to build safer apps."
+  - call SidePanelTips:
+    dontwait: true
+    content:
+      - type: h4
+        html: <i class="fa-solid fa-lightbulb"></i> Tips & Tricks
+      - type: p
+        md: "Think of security as **layers of protection**:"
+      - type: p
+        md: "- Minimize what can go wrong (least privilege)"
+      - type: p
+        md: "- Protect what matters (secure storage)"
+      - type: p
+        md: "- Don't leak clues (logging hygiene)"
+      - type: p
+        md: "- Control who gets in (exposure)"
+  # Defence console interaction
+  - call Website: LOAD
+    browser: noframe
+    url: "assets/pages/defence-console.html"
+    width: 1280
+    height: 720
+  - call Website: SHOW
+  - call WaitEvent: defence-console-complete
+  - call Website: HIDE
+  - hide ALL:
+  - scene: scene_1
+
+####################################################################################################
+# Scene 1: Theory - The Four Defence Pillars
+####################################################################################################
+scene_1:
+  - call ProgressBar: STEP
+    step: 2
+  - show bg_pillars: WITH FADE
+  - show ker: explaining AT LEFT WITH CUT
+  - show android: online AT RIGHT WITH CUT
+  # Dialogue
+  - ker says: "Your defence protocols have four pillars."
+  - android says: "Explain pillar one."
+  - ker says: "Least Privilege: request only the permissions and access you absolutely need."
+  - android says: "Explain pillar two."
+  - ker says: "Secure Storage: never store secrets or sensitive data in plain text."
+  - android says: "Explain pillar three."
+  - ker says: "Logging Hygiene: logs are not a vault. Avoid logging passwords, tokens, personal data."
+  - android says: "Explain pillar four."
+  - ker says: "Controlled Exposure: components should not be open to other apps unless you intend it — and if you do, enforce checks."
+  # Side Panel
+  - call SidePanel:
+    dontwait: true
+    content:
+      - type: h4
+        html: <i class="fa-solid fa-shield-halved"></i> Four-Pillar Quick Definitions
+      - type: p
+        md: "**Least Privilege:** Reduce what the app can access to reduce damage if compromised."
+      - type: p
+        md: "**Secure Storage:** Protect sensitive info at rest using encryption and safe containers."
+      - type: p
+        md: "**Logging Hygiene:** Treat logs as public — they can be read on debug builds or exposed through mistakes."
+      - type: p
+        md: "**Controlled Exposure:** Limit who can call your app's components; validate callers and avoid unnecessary exports."
+  # Pillars explorer interaction
+  - call Website: LOAD
+    browser: noframe
+    url: "assets/pages/pillars-explorer.html"
+    width: 1280
+    height: 720
+  - call Website: SHOW
+  - call WaitEvent: pillars-complete
+  - call Website: HIDE
+  - hide ALL:
+  - scene: scene_2
+
+####################################################################################################
+# Scene 2: Practice - Permission Audit (Drag-and-Drop)
+####################################################################################################
+scene_2:
+  - call ProgressBar: STEP
+    step: 3
+  - show bg_permissiondock: WITH FADE
+  - show ker: explaining AT LEFT WITH CUT
+  - show android: online AT RIGHT WITH CUT
+  # Dialogue
+  - ker says: "First: permissions. Your current manifest requests too much power."
+  - android says: "Goal: minimize privileges."
+  - ker says: "Drag each permission into Keep or Remove based on the app's features. The app needs: user login, display profile, sync non-sensitive settings, send notifications. No camera, no contacts, no SMS."
+  # Side Panel
+  - call SidePanel:
+    dontwait: true
+    content:
+      - type: h4
+        html: <i class="fa-solid fa-note-sticky"></i> Why Permission Minimization Matters
+      - type: p
+        md: "Extra permissions expand attack surface and increase user risk."
+      - type: p
+        md: "If an app is compromised, unnecessary permissions can make the impact far worse."
+      - type: p
+        md: "**Best practice:** Request only what you need, and justify it clearly."
+  # Permission audit interaction
+  - call Website: LOAD
+    browser: noframe
+    url: "assets/pages/permission-audit.html"
+    width: 1280
+    height: 720
+  - call Website: SHOW
+  - call WaitEvent: permission-audit-complete
+  - call Website: HIDE
+  - hide ALL:
+  - scene: scene_3
+
+####################################################################################################
+# Scene 3: Theory - Secure Storage Principles
+####################################################################################################
+scene_3:
+  - call ProgressBar: STEP
+    step: 4
+  - show bg_datavault: WITH FADE
+  - show ker: explaining AT LEFT WITH CUT
+  - show android: online AT RIGHT WITH CUT
+  # Dialogue
+  - ker says: "Now: storage. Apps often leak secrets by storing them incorrectly."
+  - android says: "Define sensitive data."
+  - ker says: "Sensitive data includes passwords, authentication tokens, personal identifiers, and private user content."
+  - android says: "Where do developers fail?"
+  - ker says: "Two common mistakes: plain text storage and hardcoding secrets inside the app."
+  - android says: "Recommended approach?"
+  - ker says: "Use encrypted storage for secrets and avoid embedding secrets into the app binary."
+  # Side Panel
+  - call SidePanel:
+    dontwait: true
+    content:
+      - type: h4
+        html: <i class="fa-solid fa-lock"></i> Storage Safety Rules
+      - type: p
+        md: "- Never store passwords in local storage."
+      - type: p
+        md: "- Tokens/keys should be protected; if stored, use encrypted containers."
+      - type: p
+        md: "- Hardcoding secrets is risky because app packages can be inspected."
+      - type: p
+        md: "- Keep sensitive data minimal, and delete it when no longer needed."
+  # Storage vault interaction
+  - call Website: LOAD
+    browser: noframe
+    url: "assets/pages/storage-vault.html"
+    width: 1280
+    height: 720
+  - call Website: SHOW
+  - call WaitEvent: storage-vault-complete
+  - call Website: HIDE
+  - hide ALL:
+  - scene: scene_4
+
+####################################################################################################
+# Scene 4: Practice - Code Fragment Review (MCQ + Fix)
+####################################################################################################
+scene_4:
+  - call ProgressBar: STEP
+    step: 5
+  - show bg_codescraps: WITH FADE
+  - show ker: thinking AT LEFT WITH CUT
+  - show android: online AT RIGHT WITH CUT
+  # Dialogue
+  - ker says: "We recovered code fragments. Identify what's unsafe and fix the logic conceptually."
+  - show android: scanning AT RIGHT WITH CUT
+  - android says: "Ready. Provide fragments."
+  # Side Panel
+  - call SidePanel:
+    dontwait: true
+    content:
+      - type: h4
+        html: <i class="fa-solid fa-note-sticky"></i> Plain-Language Rationale
+      - type: p
+        md: "- Storing a password locally creates a single point of failure — if stolen, the account is compromised."
+      - type: p
+        md: "- Tokens reduce exposure and can be revoked/expired."
+      - type: p
+        md: "- Encryption protects stored data if a device is lost or inspected."
+      - type: p
+        md: "- Cosmetic changes (renaming, obfuscating) do not equal security."
+  # Code review interaction
+  - call Website: LOAD
+    browser: noframe
+    url: "assets/pages/code-review.html"
+    width: 1280
+    height: 720
+  - call Website: SHOW
+  - call WaitEvent: code-review-complete
+  - call Website: HIDE
+  - hide ALL:
+  - scene: scene_5
+
+####################################################################################################
+# Scene 5: Theory - Logging Hygiene + Micro-Interaction Gate
+####################################################################################################
+scene_5:
+  - call ProgressBar: STEP
+    step: 6
+  - show bg_logstream: WITH FADE
+  - show ker: explaining AT LEFT WITH CUT
+  - show android: online AT RIGHT WITH CUT
+  # Dialogue
+  - ker says: "Next: logs. Developers use logs for debugging — attackers use them for harvesting."
+  - android says: "So logs can become an unintended disclosure channel."
+  - ker says: "Correct. Never log secrets, personal data, or session tokens. Keep logs minimal and meaningful."
+  # Side Panel
+  - call SidePanel:
+    dontwait: true
+    content:
+      - type: h4
+        html: <i class="fa-solid fa-file-lines"></i> Logging Hygiene Rules
+      - type: p
+        md: "**Avoid logging:**"
+      - type: p
+        md: "- Passwords, tokens, full emails"
+      - type: p
+        md: "- Phone numbers, addresses, private messages"
+      - type: p
+        md: "If you must identify a user, log a non-sensitive identifier (e.g., internal user ID) and avoid full personal details."
+      - type: p
+        md: "Logs should help developers troubleshoot without exposing private data."
+  # Log classifier micro-interaction gate
+  - call Website: LOAD
+    browser: noframe
+    url: "assets/pages/log-classifier.html"
+    width: 1280
+    height: 720
+  - call Website: SHOW
+  - call WaitEvent: log-classifier-complete
+  - call Website: HIDE
+  - hide ALL:
+  - scene: scene_6
+
+####################################################################################################
+# Scene 6: Practice - Log Sanitizer (Fill-in-the-Blank)
+####################################################################################################
+scene_6:
+  - call ProgressBar: STEP
+    step: 7
+  - show bg_sanitizer: WITH FADE
+  - show ker: explaining AT LEFT WITH CUT
+  - show android: online AT RIGHT WITH CUT
+  # Dialogue
+  - ker says: "Sanitize these logs. Keep them useful, remove sensitive parts."
+  # Side Panel
+  - call SidePanel:
+    dontwait: true
+    content:
+      - type: h4
+        html: <i class="fa-solid fa-note-sticky"></i> Why Redaction Works
+      - type: p
+        md: "- Developers still see that an action occurred and can troubleshoot patterns."
+      - type: p
+        md: "- Attackers don't gain usable secrets from logs."
+      - type: p
+        md: "- The goal is **minimum necessary information.**"
+  # Log sanitizer interaction
+  - call Website: LOAD
+    browser: noframe
+    url: "assets/pages/log-sanitizer.html"
+    width: 1280
+    height: 720
+  - call Website: SHOW
+  - call WaitEvent: log-sanitizer-complete
+  - call Website: HIDE
+  - hide ALL:
+  - scene: scene_7
+
+####################################################################################################
+# Scene 7: Theory - Controlled Component Exposure
+####################################################################################################
+scene_7:
+  - call ProgressBar: STEP
+    step: 8
+  - show bg_corridor: WITH FADE
+  - show ker: explaining AT LEFT WITH CUT
+  - show android: online AT RIGHT WITH CUT
+  # Dialogue
+  - ker says: "Last pillar: controlled exposure. Components can be reachable by other apps."
+  - show android: alert AT RIGHT WITH CUT
+  - android says: "Why is that dangerous?"
+  - ker says: "Because a malicious app could trigger your exported components to access data or perform actions."
+  - show android: online AT RIGHT WITH CUT
+  - android says: "So we must restrict entry?"
+  - ker says: "Exactly. Export only when needed, and validate who is calling."
+  # Side Panel
+  - call SidePanel:
+    dontwait: true
+    content:
+      - type: h4
+        html: <i class="fa-solid fa-door-open"></i> Controlled Exposure
+      - type: p
+        md: "\"Exported\" means other apps can potentially start or interact with that component."
+      - type: p
+        md: "**Best practices:**"
+      - type: p
+        md: "- Keep components not exported unless required."
+      - type: p
+        md: "- Require checks for sensitive actions (authentication, validation)."
+      - type: p
+        md: "- Avoid exposing internal-only screens or background actions."
+  # Component doors interaction
+  - call Website: LOAD
+    browser: noframe
+    url: "assets/pages/component-doors.html"
+    width: 1280
+    height: 720
+  - call Website: SHOW
+  - call WaitEvent: component-doors-complete
+  - call Website: HIDE
+  - hide ALL:
+  - scene: scene_8
+
+####################################################################################################
+# Scene 8: Practice - Security Gate Configuration (Toggles)
+####################################################################################################
+scene_8:
+  - call ProgressBar: STEP
+    step: 9
+  - show bg_securitygate: WITH FADE
+  - show ker: explaining AT LEFT WITH CUT
+  - show android: online AT RIGHT WITH CUT
+  # Dialogue
+  - ker says: "Configure access rules. The wrong configuration lets hostile apps in."
+  - android says: "Clarify toggle logic before proceeding."
+  - ker says: "Three controls per door: Exported means other apps can reach it. Requires Login means only authenticated users can enter. Accepts External Intents means other apps can send actions to it."
+  - ker says: "Ask yourself: does this component need to be reachable from outside? Does it hold private data? Configure accordingly."
+  # Side Panel
+  - call SidePanelTips:
+    dontwait: true
+    content:
+      - type: h4
+        html: <i class="fa-solid fa-lightbulb"></i> Reasoning Guide
+      - type: p
+        md: "**ProfileActivity:** Contains personal data → keep internal and require login."
+      - type: p
+        md: "**ShareActivity:** Designed to interact with external apps → exported can be acceptable, but control what data leaves."
+      - type: p
+        md: "**SyncService:** Internal maintenance → external apps shouldn't trigger it."
+  # Security gate interaction
+  - call Website: LOAD
+    browser: noframe
+    url: "assets/pages/security-gate.html"
+    width: 1280
+    height: 720
+  - call Website: SHOW
+  - call WaitEvent: security-gate-complete
+  - call Website: HIDE
+  - hide ALL:
+  - scene: scene_9
+
+####################################################################################################
+# Scene 9: Revision / Summary
+####################################################################################################
+scene_9:
+  - call ProgressBar: STEP
+    step: 10
+  - show bg_scoreboard: WITH FADE
+  - show ker: thinking AT LEFT WITH CUT
+  - show android: online AT RIGHT WITH CUT
+  # Dialogue
+  - ker says: "Run the final defence audit."
+  - show android: scanning AT RIGHT WITH CUT
+  - android says: "Audit initiated. Validate compliance with four pillars."
+  # Side Panel
+  - call SidePanel:
+    dontwait: true
+    content:
+      - type: h4
+        html: <i class="fa-solid fa-note-sticky"></i> Revision Summary
+      - type: p
+        md: "- Ask for the minimum permissions."
+      - type: p
+        md: "- Protect sensitive data using encryption and safe practices."
+      - type: p
+        md: "- Logs must not leak secrets."
+      - type: p
+        md: "- Expose components only when needed, and guard sensitive entry points."
+  # Revision audit interaction
+  - call Website: LOAD
+    browser: noframe
+    url: "assets/pages/revision-audit.html"
+    width: 900
+    height: 620
+  - call Website: SHOW
+  - call WaitEvent: revision-audit-complete
+  - call Website: HIDE
+  - scene: scene_9_mcq1
+
+####################################################################################################
+# Scene 9b - Quick MCQ reinforcement (RenJS-native)
+####################################################################################################
+scene_9_mcq1:
+  - call LayoutSectionTitle: DESTROY TOP
+  - call LayoutSectionTitle: "What should never be stored locally?"
+    position: top
+  - call CustomText: "What should never be stored locally?"
+    name: android
+  - choice:
+      - "UI theme preference":
+          - android says: "UI preferences are not sensitive — they can't be used to authenticate or identify a person."
+          - scene: scene_9_mcq1_retry
+      - "Raw password":
+          - android says: "Correct. A raw password stored locally creates a single point of failure."
+          - scene: scene_9_mcq2
+      - "Language preference":
+          - android says: "Language settings are not sensitive — they can't compromise an account."
+          - scene: scene_9_mcq1_retry
+      - __config:
+          y: 620
+
+scene_9_mcq1_retry:
+  - scene: scene_9_mcq1
+
+scene_9_mcq2:
+  - call LayoutSectionTitle: DESTROY TOP
+  - call LayoutSectionTitle: "Which is safer?"
+    position: top
+  - call CustomText: "Which is safer?"
+    name: android
+  - choice:
+      - "Export ProfileActivity to speed up navigation":
+          - android says: "Exporting ProfileActivity means any app on the device can launch it — bypassing your login screen entirely."
+          - scene: scene_9_mcq2_retry
+      - "Keep ProfileActivity internal and validate login":
+          - android says: "Correct. Always keep private screens internal."
+          - scene: wrapup
+      - __config:
+          y: 620
+
+scene_9_mcq2_retry:
+  - scene: scene_9_mcq2
+
+####################################################################################################
+# Wrapup - End / Celebration
+####################################################################################################
+wrapup:
+  - call LayoutSectionTitle: DESTROY TOP
+  - show bg_wrapup2: WITH FADE
+  - show ker: celebrating AT LEFT WITH CUT
+  - show android: secured AT RIGHT WITH CUT
+  # Dialogue
+  - ker says: "Upgrade complete. Your security posture is no longer \"unknown.\""
+  - android says: "Defence Protocols integrated: Least Privilege, Secure Storage, Logging Hygiene, Controlled Exposure."
+  - ker says: "Good. Because you've hardened four attack surfaces: you minimised permissions, secured sensitive storage, sanitised logs, and locked down component exposure. Those four habits are your baseline."
+  - ker says: "Next module is hostile territory — we'll simulate an actual attack sequence."
+  - android says: "Prepared. Threat response mode available."
+  # Hide characters for clean reward display
+  - hide ALL:
+  - show bg_wrapup2: WITH CUT
+  # Reward screen
+  - call Website: LOAD
+    browser: noframe
+    url: "assets/pages/reward-screen.html"
+    width: 900
+    height: 620
+  - call Website: SHOW
+  - call WaitEvent: reward-complete
+  - call Website: HIDE
+  - scene: endGame
+
+endGame:
+  - call ProgressBar: HIDE
+  - hide ALL:
+  - call SidePanel: CLEAR
+  - call SidePanelTips: CLEAR
+  - effect ROLLINGCREDITS:
+    endGame: true
+    text:
+      - "Secure Upgrade: Android Defence Protocols"
+      - using Cybergame

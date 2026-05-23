@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Activity Lifecycle Ring</title>
+  <link rel="stylesheet" href="cybergame-common.css" />
+  <style>
+    html, body {
+      background: transparent;
+      overflow: hidden;
+    }
+
+    .page-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      padding: 0;
+    }
+
+    /* ── Dark panel with neon border ── */
+    .dark-panel {
+      background: rgba(6, 10, 20, 0.85);
+      border: 1px solid rgba(0, 212, 255, 0.5);
+      border-radius: 8px;
+      padding: 24px 40px;
+      box-shadow: 0 0 20px rgba(0, 212, 255, 0.15), inset 0 0 30px rgba(0, 212, 255, 0.03);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 96%;
+      max-width: 560px;
+      height: 96%;
+      overflow: hidden;
+      margin: auto;
+    }
+
+    h2 {
+      font-size: 16px;
+      margin-bottom: 4px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .subtitle {
+      font-size: 12px;
+      color: #7a8ba8;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    /* ── Lifecycle Ring ── */
+    .ring-container {
+      position: relative;
+      width: 300px;
+      height: 300px;
+      flex-shrink: 0;
+      margin-bottom: 6px;
+    }
+
+    .ring-center-label {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      pointer-events: none;
+    }
+
+    .ring-center-label .label-title {
+      font-size: 12px;
+      color: #00d4ff;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+
+    .ring-center-label .label-count {
+      font-size: 10px;
+      color: #4a6a8a;
+      margin-top: 3px;
+    }
+
+    /* ── Segment buttons ── */
+    .segment {
+      position: absolute;
+      width: 100px;
+      text-align: center;
+      cursor: pointer;
+      padding: 8px 6px;
+      border: 1px solid rgba(0, 212, 255, 0.35);
+      border-radius: 8px;
+      background: linear-gradient(135deg, #0a1a2a, #0d2d4d);
+      transition: all 0.3s ease;
+      user-select: none;
+    }
+
+    .segment:hover,
+    .segment:focus {
+      border-color: #00d4ff;
+      box-shadow: 0 0 16px rgba(0, 212, 255, 0.5);
+      outline: none;
+    }
+
+    .segment .seg-name {
+      font-size: 11px;
+      color: #00d4ff;
+      font-weight: bold;
+      letter-spacing: 0.5px;
+    }
+
+    .segment .seg-phase {
+      font-size: 9px;
+      color: #4a6a8a;
+      margin-top: 2px;
+    }
+
+    .segment.visited {
+      border-color: #39ff14;
+      background: linear-gradient(135deg, #081e10, #0c3e1e);
+      box-shadow: 0 0 15px rgba(57, 255, 20, 0.4);
+    }
+
+    .segment.visited .seg-name {
+      color: #39ff14;
+    }
+
+    .segment.visited .seg-phase {
+      color: rgba(57, 255, 20, 0.6);
+    }
+
+    .segment.active {
+      border-color: #00d4ff;
+      box-shadow: 0 0 20px rgba(0, 212, 255, 0.7), 0 0 40px rgba(0, 212, 255, 0.2);
+      z-index: 10;
+    }
+
+    /* Positions: clock layout, 12 o'clock = onCreate, going clockwise */
+    /* 12 o'clock */
+    .segment[data-index="0"] {
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    /* 2 o'clock */
+    .segment[data-index="1"] {
+      top: 90px;
+      right: -45px;
+    }
+    /* 4 o'clock */
+    .segment[data-index="2"] {
+        bottom: 85px;
+        right: -45px;
+    }
+    /* 6 o'clock */
+    .segment[data-index="3"] {
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    /* 8 o'clock */
+    .segment[data-index="4"] {
+      bottom: 85px;
+      left: -45px;
+    }
+    /* 10 o'clock */
+    .segment[data-index="5"] {
+      top: 90px;
+      left: -45px;
+    }
+
+    /* ── Connector arcs (decorative arrows between segments) ── */
+    .ring-arrows {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .ring-arrows svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* ── Tooltip ── */
+    .seg-tooltip {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(10, 14, 26, 0.97);
+      border: 1px solid #00d4ff;
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: #e0e6f0;
+      font-size: 13px;
+      max-width: 220px;
+      text-align: center;
+      box-shadow: 0 0 25px rgba(0, 212, 255, 0.4);
+      z-index: 50;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .seg-tooltip.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .seg-tooltip .tt-method {
+      font-size: 14px;
+      font-weight: bold;
+      color: #00d4ff;
+      margin-bottom: 4px;
+    }
+
+    .seg-tooltip .tt-desc {
+      font-size: 12px;
+      color: #c0c8d8;
+      line-height: 1.3;
+    }
+
+    /* ── Progress bar ── */
+    .progress-bar {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 8px;
+      background: rgba(0, 20, 40, 0.5);
+      border: 1px solid rgba(0, 212, 255, 0.15);
+      border-radius: 12px;
+      padding: 5px 12px;
+    }
+
+    .progress-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      border: 1px solid rgba(0, 212, 255, 0.3);
+      background: rgba(0, 20, 40, 0.5);
+      transition: all 0.3s ease;
+    }
+
+    .progress-dot.filled {
+      border-color: #39ff14;
+      background: #39ff14;
+      box-shadow: 0 0 8px rgba(57, 255, 20, 0.6);
+    }
+
+    /* ── Part 2: Fill-in-the-blank ── */
+    .part2 {
+      width: 100%;
+      max-width: 460px;
+      padding-top: 10px;
+      opacity: 0;
+      pointer-events: none;
+      max-height: 0;
+      overflow: hidden;
+      transition: opacity 0.5s ease, max-height 0.5s ease;
+    }
+
+    .part2.unlocked {
+      opacity: 1;
+      pointer-events: auto;
+      max-height: 400px;
+    }
+
+    .part2-inner {
+      background: rgba(0, 20, 40, 0.5);
+      border: 1px solid rgba(0, 212, 255, 0.2);
+      border-radius: 6px;
+      padding: 12px 16px;
+    }
+
+    .part2 h3 {
+      font-size: 13px;
+      margin-bottom: 8px;
+      letter-spacing: 1px;
+    }
+
+    .prompt-text {
+      font-size: 13px;
+      color: #c0c8d8;
+      margin-bottom: 10px;
+      line-height: 1.4;
+    }
+
+    .prompt-text .blank {
+      display: inline-block;
+      border-bottom: 2px solid #00d4ff;
+      width: 110px;
+      margin: 0 4px;
+    }
+
+    .answer-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+
+    .answer-row .text-input {
+      flex: 1;
+      min-width: 160px;
+      padding: 8px 12px;
+      font-size: 14px;
+    }
+
+    .answer-row .btn {
+      padding: 8px 20px;
+      font-size: 14px;
+    }
+
+    .hint-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 4px;
+    }
+
+    .feedback-area {
+      min-height: 18px;
+      margin-top: 6px;
+      font-size: 12px;
+    }
+
+    /* ── Unlock banner ── */
+    @keyframes glow-pulse {
+      0%, 100% { text-shadow: 0 0 10px rgba(57, 255, 20, 0.5); }
+      50% { text-shadow: 0 0 25px rgba(57, 255, 20, 0.9), 0 0 40px rgba(57, 255, 20, 0.3); }
+    }
+
+    .unlock-banner {
+      color: #39ff14;
+      font-size: 12px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    .unlock-banner.show {
+      opacity: 1;
+      animation: glow-pulse 1.8s ease-in-out infinite;
+    }
+
+    /* ── Completion banner ── */
+    .complete-banner {
+      display: none;
+      color: #39ff14;
+      font-size: 14px;
+      font-weight: bold;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-top: 8px;
+      animation: glow-pulse 1.8s ease-in-out infinite;
+    }
+
+    .complete-banner.show {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="page-wrapper">
+    <div class="dark-panel">
+      <h2>Activity Lifecycle</h2>
+      <p class="subtitle">Click each lifecycle method to explore it</p>
+
+      <!-- Progress dots -->
+      <div class="progress-bar" aria-label="Progress: lifecycle methods visited">
+        <div class="progress-dot" data-seg="0" aria-label="onCreate progress"></div>
+        <div class="progress-dot" data-seg="1" aria-label="onStart progress"></div>
+        <div class="progress-dot" data-seg="2" aria-label="onResume progress"></div>
+        <div class="progress-dot" data-seg="3" aria-label="onPause progress"></div>
+        <div class="progress-dot" data-seg="4" aria-label="onStop progress"></div>
+        <div class="progress-dot" data-seg="5" aria-label="onDestroy progress"></div>
+      </div>
+
+      <!-- Lifecycle Ring -->
+      <div class="ring-container" role="group" aria-label="Activity lifecycle ring with 6 methods arranged in a circle">
+
+        <!-- Decorative arrow ring -->
+        <div class="ring-arrows" aria-hidden="true">
+          <svg viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="150" cy="150" r="105" stroke="rgba(0,212,255,0.12)" stroke-width="1.5" fill="none" stroke-dasharray="8 6" />
+            <!-- Clockwise arrow heads -->
+            <polygon points="248,115 240,125 238,113" fill="rgba(0,212,255,0.2)" />
+            <polygon points="248,195 240,185 238,197" fill="rgba(0,212,255,0.2)" />
+            <polygon points="150,262 142,252 158,252" fill="rgba(0,212,255,0.2)" />
+            <polygon points="52,195 60,185 62,197" fill="rgba(0,212,255,0.2)" />
+            <polygon points="52,115 60,125 62,113" fill="rgba(0,212,255,0.2)" />
+            <polygon points="150,38 142,48 158,48" fill="rgba(0,212,255,0.2)" />
+          </svg>
+        </div>
+
+        <!-- Center label -->
+        <div class="ring-center-label">
+          <div class="label-title">Activity</div>
+          <div class="label-count" id="visit-count">0 / 6</div>
+        </div>
+
+        <!-- Tooltip (centered in ring) -->
+        <div class="seg-tooltip" id="tooltip" role="status" aria-live="polite">
+          <div class="tt-method" id="tt-method"></div>
+          <div class="tt-desc" id="tt-desc"></div>
+        </div>
+
+        <!-- 6 Segments -->
+        <button class="segment" data-index="0" tabindex="0"
+                aria-label="onCreate: Setup, initialize the Activity">
+          <div class="seg-name">onCreate()</div>
+          <div class="seg-phase">Setup</div>
+        </button>
+
+        <button class="segment" data-index="1" tabindex="0"
+                aria-label="onStart: Becoming visible to the user">
+          <div class="seg-name">onStart()</div>
+          <div class="seg-phase">Visible</div>
+        </button>
+
+        <button class="segment" data-index="2" tabindex="0"
+                aria-label="onResume: Interactive, the user can now interact">
+          <div class="seg-name">onResume()</div>
+          <div class="seg-phase">Interactive</div>
+        </button>
+
+        <button class="segment" data-index="3" tabindex="0"
+                aria-label="onPause: Partially blocked, another activity is in front">
+          <div class="seg-name">onPause()</div>
+          <div class="seg-phase">Blocked</div>
+        </button>
+
+        <button class="segment" data-index="4" tabindex="0"
+                aria-label="onStop: Not visible, Activity is in the background">
+          <div class="seg-name">onStop()</div>
+          <div class="seg-phase">Background</div>
+        </button>
+
+        <button class="segment" data-index="5" tabindex="0"
+                aria-label="onDestroy: Cleanup, Activity is being removed">
+          <div class="seg-name">onDestroy()</div>
+          <div class="seg-phase">Cleanup</div>
+        </button>
+      </div>
+
+      <!-- Unlock banner -->
+      <div class="unlock-banner" id="unlock-banner" role="status">Ring complete — challenge unlocked</div>
+
+      <!-- Part 2: Fill in the blank -->
+      <div class="part2" id="part2" aria-label="Part 2: Fill in the blank challenge">
+        <div class="part2-inner">
+          <h3>Challenge</h3>
+          <p class="prompt-text">
+            When an Activity becomes visible and ready for user interaction, the system calls
+            <span class="blank" aria-hidden="true"></span>.
+          </p>
+
+          <div class="answer-row">
+            <input type="text" class="text-input" id="answer-input"
+                   placeholder="Type the method name..."
+                   aria-label="Enter the lifecycle method name"
+                   autocomplete="off" spellcheck="false" />
+            <button class="btn" id="submit-btn">Submit</button>
+          </div>
+
+          <div class="hint-row">
+            <button class="hint-btn" id="hint-btn-1" aria-expanded="false">Show first letter</button>
+            <button class="hint-btn" id="hint-btn-2" aria-expanded="false">Another hint</button>
+          </div>
+          <p class="hint-text" id="hint-text-1" role="status">onR...</p>
+          <p class="hint-text" id="hint-text-2" role="status">This is the "interactive" state.</p>
+
+          <div class="feedback-area" id="feedback" aria-live="polite"></div>
+
+          <!-- Completion banner -->
+          <div class="complete-banner" id="complete-banner" role="status">Lifecycle Complete</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ── Lifecycle data ── */
+    const LIFECYCLE = [
+      { method: "onCreate()",  desc: "Setup \u2014 initialize the Activity" },
+      { method: "onStart()",   desc: "Becoming visible to the user" },
+      { method: "onResume()",  desc: "Interactive \u2014 the user can now interact" },
+      { method: "onPause()",   desc: "Partially blocked \u2014 another activity is in front" },
+      { method: "onStop()",    desc: "Not visible \u2014 Activity is in the background" },
+      { method: "onDestroy()", desc: "Cleanup \u2014 Activity is being removed" },
+    ];
+
+    /* ── State ── */
+    const visited = new Set();
+    let part2Unlocked = false;
+    let completed = false;
+    let activeTooltipTimeout = null;
+
+    /* ── DOM refs ── */
+    const segments = document.querySelectorAll(".segment");
+    const tooltipEl = document.getElementById("tooltip");
+    const ttMethod = document.getElementById("tt-method");
+    const ttDesc = document.getElementById("tt-desc");
+    const visitCount = document.getElementById("visit-count");
+    const progressDots = document.querySelectorAll(".progress-dot");
+    const unlockBanner = document.getElementById("unlock-banner");
+    const part2El = document.getElementById("part2");
+    const answerInput = document.getElementById("answer-input");
+    const submitBtn = document.getElementById("submit-btn");
+    const hintBtn1 = document.getElementById("hint-btn-1");
+    const hintBtn2 = document.getElementById("hint-btn-2");
+    const hintText1 = document.getElementById("hint-text-1");
+    const hintText2 = document.getElementById("hint-text-2");
+    const feedbackEl = document.getElementById("feedback");
+    const completeBanner = document.getElementById("complete-banner");
+
+    /* ── Part 1: Ring interaction ── */
+    function showTooltip(index) {
+      const data = LIFECYCLE[index];
+      ttMethod.textContent = data.method;
+      ttDesc.textContent = data.desc;
+
+      // Clear any pending hide
+      if (activeTooltipTimeout) {
+        clearTimeout(activeTooltipTimeout);
+        activeTooltipTimeout = null;
+      }
+
+      tooltipEl.classList.add("visible");
+
+      // Mark visited
+      if (!visited.has(index)) {
+        visited.add(index);
+        segments[index].classList.add("visited");
+        progressDots[index].classList.add("filled");
+        visitCount.textContent = visited.size + " / 6";
+      }
+
+      // Clear active state from all segments, set on current
+      segments.forEach(s => s.classList.remove("active"));
+      segments[index].classList.add("active");
+
+      // Auto-hide tooltip after 4 seconds
+      activeTooltipTimeout = setTimeout(() => {
+        tooltipEl.classList.remove("visible");
+        segments[index].classList.remove("active");
+        activeTooltipTimeout = null;
+      }, 4000);
+
+      // Check if all visited
+      if (visited.size === 6 && !part2Unlocked) {
+        unlockPart2();
+      }
+    }
+
+    function unlockPart2() {
+      part2Unlocked = true;
+      unlockBanner.classList.add("show");
+      // Small delay before revealing Part 2
+      setTimeout(() => {
+        part2El.classList.add("unlocked");
+        answerInput.focus();
+      }, 600);
+    }
+
+    // Click and keyboard handlers for segments
+    segments.forEach((seg, i) => {
+      seg.addEventListener("click", () => showTooltip(i));
+      seg.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          showTooltip(i);
+        }
+      });
+    });
+
+    // Click anywhere in ring container to dismiss tooltip
+    document.querySelector(".ring-container").addEventListener("click", (e) => {
+      if (!e.target.closest(".segment") && !e.target.closest(".seg-tooltip")) {
+        tooltipEl.classList.remove("visible");
+        segments.forEach(s => s.classList.remove("active"));
+        if (activeTooltipTimeout) {
+          clearTimeout(activeTooltipTimeout);
+          activeTooltipTimeout = null;
+        }
+      }
+    });
+
+    /* ── Part 2: Fill-in-the-blank ── */
+    const CORRECT_ANSWERS = ["onresume()", "onresume"];
+
+    function normalizeAnswer(val) {
+      return val.trim().toLowerCase();
+    }
+
+    function showFeedback(text, type) {
+      feedbackEl.className = "feedback-area " + (type === "correct" ? "feedback-correct" : "feedback-incorrect");
+      feedbackEl.textContent = text;
+    }
+
+    function checkAnswer() {
+      if (completed) return;
+      const raw = answerInput.value;
+      const normalized = normalizeAnswer(raw);
+
+      if (!normalized) {
+        showFeedback("Please type an answer.", "incorrect");
+        return;
+      }
+
+      if (CORRECT_ANSWERS.includes(normalized)) {
+        // Correct
+        completed = true;
+        showFeedback("Correct! onResume() is called when the Activity is interactive.", "correct");
+        answerInput.disabled = true;
+        submitBtn.disabled = true;
+        completeBanner.classList.add("show");
+        Game.sendMessage("lifecycle-complete");
+      } else {
+        // Incorrect
+        showFeedback("Not quite \u2014 try again. Remember, it's a lifecycle callback method.", "incorrect");
+        answerInput.focus();
+        answerInput.select();
+      }
+    }
+
+    submitBtn.addEventListener("click", checkAnswer);
+
+    answerInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        checkAnswer();
+      }
+    });
+
+    // Hint buttons
+    hintBtn1.addEventListener("click", () => {
+      const showing = hintText1.classList.toggle("visible");
+      hintBtn1.setAttribute("aria-expanded", showing);
+    });
+
+    hintBtn2.addEventListener("click", () => {
+      const showing = hintText2.classList.toggle("visible");
+      hintBtn2.setAttribute("aria-expanded", showing);
+    });
+
+    /* ── Messaging API ── */
+    const Events = {
+      handlers: {},
+      init() {
+        window.addEventListener("message", (event) => {
+          if (event.origin !== window.location.origin) return;
+          if (event.data.type !== "renjs-event") return;
+          const { id, args, scope } = event.data;
+          (this.handlers[id] || []).forEach((fn) => fn.apply(scope, args));
+        });
+      },
+      on(id, fn) {
+        this.handlers[id] = this.handlers[id] || [];
+        this.handlers[id].push(fn);
+        this.init();
+      },
+    };
+
+    const Game = {
+      Events,
+      onMessage(id, fn) { Events.on(id, fn); },
+      sendMessage(id, args = [], scope = {}) {
+        window.parent.postMessage({ type: "renjs-event", id, args, scope }, window.location.origin);
+      },
+    };
+  </script>
+</body>
+</html>

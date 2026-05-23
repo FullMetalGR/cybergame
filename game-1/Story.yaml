@@ -1,0 +1,428 @@
+####################################################################################################
+#                                                                                                  #
+#           SCENARIO 1: BOOT SEQUENCE - ANDROID FOUNDATIONS                                        #
+#                                                                                                  #
+####################################################################################################
+
+start:
+  - call ProgressBar: LOAD
+    steps: 10
+    step: 1
+  - call ProgressBar: SHOW
+  - show bg_wrecksite: WITH FADE
+  # Narrative intro (no character - narrator text)
+  - call CustomText: "On the dust-swept moon of Kharos-7, deep in the Outer Velhar Expanse... a droid lies half-buried in the wreckage of a fallen starship. Its systems are dark. Its memory, gone."
+  # Android appears first
+  - show android: broken AT CENTER WITH FADE
+  - android says: "...Systems offline... memory in fragments... BOOT FAILURE."
+  # Then Ker appears and starts talking
+  - show ker: crouching AT LEFT WITH FADE
+  - ker says: "Hold steady... your core is still overloaded. Looks like you survived the crash."
+  - ker says: "Not quite a failure, you're responding. I'm Ker. I write software for mobile droids and field terminals. I've seen worse than this."
+  - android says: "Identity confirmed: AN-DR 01d. Primary directive: developer assistance. Core memory: fragmented. Requesting restoration."
+  - ker says: "In order to restore your memory, we need to start with the fundamentals. Let's remember what Android is, how apps are structured, how they talk to each other."
+  - android says: "Estimated recovery scope?"
+  - ker says: "Four areas: Android's system layers, app components, how intents work, and the Activity lifecycle. By the time we're done, you'll have your full memory back."
+  - android says: "Understood. Initiating recovery sequence."
+  # Side Panels
+  - call SidePanel:
+    dontwait: true
+    content:
+      - type: h4
+        html: <i class="fa-solid fa-note-sticky"></i> Notes & Clues
+      - type: p
+        md: "**What is Android?**"
+      - type: p
+        md: "Android is an operating system used mainly on mobile devices (phones, tablets) and many embedded devices."
+      - type: p
+        md: "It provides:"
+      - type: p
+        md: "- A platform to run apps (install, launch, manage)"
+      - type: p
+        md: "- A security model (app isolation, permissions)"
+      - type: p
+        md: "- System services (network, storage, notifications, sensors)"
+  - call SidePanelTips:
+    dontwait: true
+    content:
+      - type: h4
+        html: <i class="fa-solid fa-lightbulb"></i> Tips & Tricks
+      - type: p
+        md: "In this game, you will learn Android like a \"droid OS\": layers, components, and how apps talk to each other."
+  # Boot nodes interaction
+  - call Website: LOAD
+    browser: noframe
+    url: "assets/pages/boot-nodes.html"
+    width: 1280
+    height: 720
+  - call Website: SHOW
+  - call WaitEvent: boot-nodes-complete
+  - call Website: HIDE
+  - hide ALL:
+  - scene: scene_1
+
+scene_1:
+  - call ProgressBar: STEP
+    step: 2
+  - show bg_blueprint: WITH FADE
+  - show ker: explaining AT LEFT WITH CUT
+  - show android: booting AT RIGHT WITH CUT
+  # Dialogue
+  - ker says: "Android isn't a single block. It's a layered system, like a starship with decks."
+  - android says: "Define layers. Provide structure."
+  - ker says: "At a high level, think of four key pieces: Apps you interact with, Application Framework that provides building blocks, Android Runtime that executes app code, and Linux Kernel that talks to hardware."
+  - android says: "So the kernel is the engine room?"
+  - ker says: "Exactly. And the framework is the command deck, services and APIs that apps request."
+  # Side Panel
+  - call SidePanel:
+    dontwait: true
+    content:
+      - type: h4
+        html: <i class="fa-solid fa-note-sticky"></i> Android Layer Breakdown
+      - type: p
+        md: "**Apps:** The programs users install and run (messaging, maps, banking)."
+      - type: p
+        md: "**Application Framework:** System-level APIs/services apps use (Activity Manager, Notification Manager)."
+      - type: p
+        md: "**Android Runtime (ART):** Runs compiled app code efficiently."
+      - type: p
+        md: "**Linux Kernel:** Core of the OS managing processes, memory, file access, and drivers."
+      - type: p
+        md: "------------------------"
+      - type: p
+        md: "**Key idea:** Apps request capabilities through the framework; the kernel enforces low-level control."
+  # Layer explorer interaction
+  - call Website: LOAD
+    browser: noframe
+    url: "assets/pages/layer-explorer.html"
+    width: 1280
+    height: 720
+  - call Website: SHOW
+  - call WaitEvent: layer-explorer-complete
+  - call Website: HIDE
+  - hide ALL:
+  - scene: scene_2
+
+scene_2:
+  - call ProgressBar: STEP
+    step: 3
+  - show bg_tower: WITH FADE
+  - show ker: explaining AT LEFT WITH CUT
+  - show android: booting AT RIGHT WITH CUT
+  # Dialogue
+  - ker says: "Let's rebuild your OS map. Drag the correct tiles into the correct layer slots."
+  # Side Panel
+  - call SidePanelTips:
+    dontwait: true
+    content:
+      - type: h4
+        html: <i class="fa-solid fa-lightbulb"></i> Why This Matters
+      - type: p
+        md: "Understanding layers helps you predict where something happens:"
+      - type: p
+        md: "- UI behavior = usually in Apps/Framework"
+      - type: p
+        md: "- Performance/runtime execution = Runtime"
+      - type: p
+        md: "- Hardware access and core enforcement = Kernel"
+      - type: p
+        md: "This becomes critical later when we discuss permissions and security boundaries."
+  # Layer stack drag-and-drop
+  - call Website: LOAD
+    browser: noframe
+    url: "assets/pages/layer-stack.html"
+    width: 1280
+    height: 720
+  - call Website: SHOW
+  - call WaitEvent: layer-stack-complete
+  - call Website: HIDE
+  - hide ALL:
+  - scene: scene_3
+
+scene_3:
+  - call ProgressBar: STEP
+    step: 4
+  - show bg_capsule: WITH FADE
+  - show ker: explaining AT LEFT WITH CUT
+  - show android: partial AT RIGHT WITH CUT
+  # Dialogue
+  - ker says: "Now: how Android apps are structured. Android uses components. Think of them as specialized modules. Each one handles a distinct type of job."
+  - android says: "Components are modular units of behavior, each isolated by purpose?"
+  - ker says: "Exactly. Here are the core ones: Activity, Service, Broadcast Receiver, and Content Provider."
+  - android says: "And these components must be declared in advance?"
+  - ker says: "Yes. In the AndroidManifest.xml, the app's official registry. If a component isn't listed there, the system won't recognize it."
+  # Side Panel
+  - call SidePanel:
+    dontwait: true
+    content:
+      - type: h4
+        html: <i class="fa-solid fa-note-sticky"></i> AndroidManifest.xml
+      - type: p
+        md: "The manifest is a configuration file that declares:"
+      - type: p
+        md: "- The app's components (activities, services, receivers, providers)"
+      - type: p
+        md: "- Required permissions (what the app wants to access)"
+      - type: p
+        md: "- Component rules (e.g., whether other apps can start them)"
+      - type: p
+        md: "------------------------"
+      - type: p
+        md: "**Key concept:** If it's not declared properly, the system may block it or expose it unintentionally."
+  # Component explorer interaction
+  - call Website: LOAD
+    browser: noframe
+    url: "assets/pages/component-explorer.html"
+    width: 1280
+    height: 720
+  - call Website: SHOW
+  - call WaitEvent: component-complete
+  - call Website: HIDE
+  - hide ALL:
+  - scene: scene_3_5
+
+scene_3_5:
+  - call ProgressBar: STEP
+    step: 5
+  - show bg_commstower: WITH FADE
+  - show ker: explaining AT LEFT WITH CUT
+  - show android: partial AT RIGHT WITH CUT
+  # Dialogue
+  - ker says: "You know the components now. But how do they talk to each other? And how do apps talk to other apps?"
+  - android says: "Unknown. Signal protocol required."
+  - ker says: "The protocol is called an Intent. Think of it like a space transmission, a structured message that says what you want to do."
+  - android says: "Two variants detected. Explicit and implicit?"
+  - ker says: "Correct. An Explicit Intent names the exact target, like hailing a specific ship. An Implicit Intent broadcasts an action and lets Android find any app capable of handling it."
+  - android says: "Signal type depends on whether the destination is known."
+  - ker says: "Exactly. Now let's run a simulation."
+  # Side Panel
+  - call SidePanel:
+    dontwait: true
+    content:
+      - type: h4
+        html: <i class="fa-solid fa-note-sticky"></i> Intent Types
+      - type: p
+        md: "**Intent:** A structured message describing what you want to do. Carries the action, data, and optional extras."
+      - type: p
+        md: "**Explicit Intent:** Specifies the exact component to start (e.g., open ProfileActivity). Use inside your own app."
+      - type: p
+        md: "**Implicit Intent:** Declares an action (e.g., ACTION_SEND) and lets Android find an app that can handle it."
+      - type: p
+        md: "------------------------"
+      - type: p
+        md: "**Security note:** Implicit intents can be intercepted if components are exported without care."
+  # Intent simulation interaction
+  - call Website: LOAD
+    browser: noframe
+    url: "assets/pages/intent-sim.html"
+    width: 1280
+    height: 720
+  - call Website: SHOW
+  - call WaitEvent: intent-sim-complete
+  - call Website: HIDE
+  - hide ALL:
+  - scene: scene_4
+
+scene_4:
+  - call ProgressBar: STEP
+    step: 6
+  - show bg_console: WITH FADE
+  - show ker: explaining AT LEFT WITH CUT
+  - show android: partial AT RIGHT WITH CUT
+  # Dialogue
+  - ker says: "Apps communicate using Intents. You'll route a message like a space transmission."
+  - android says: "Intent: a request describing an action to perform?"
+  - ker says: "Correct. Now simulate routing."
+  # Side Panel
+  - call SidePanelTips:
+    dontwait: true
+    content:
+      - type: h4
+        html: <i class="fa-solid fa-lightbulb"></i> Intent Basics
+      - type: p
+        md: "An Intent is a structured message: it describes what you want to do."
+      - type: p
+        md: "**Explicit Intent:** used when you specify the exact component."
+      - type: p
+        md: "**Implicit Intent:** used when you specify an action and Android chooses the best app."
+      - type: p
+        md: "**Practical takeaway:** Intents enable modular design, but we must secure component exposure."
+  # Intent router simulation
+  - call Website: LOAD
+    browser: noframe
+    url: "assets/pages/intent-router.html"
+    width: 1280
+    height: 720
+  - call Website: SHOW
+  - call WaitEvent: intent-router-complete
+  - call Website: HIDE
+  - hide ALL:
+  - scene: scene_5
+
+scene_5:
+  - call ProgressBar: STEP
+    step: 7
+  - show bg_scanner: WITH FADE
+  - show ker: thinking AT LEFT WITH CUT
+  - show android: partial AT RIGHT WITH CUT
+  # Dialogue
+  - ker says: "Quick validation check. You'll spot what belongs in the Manifest and what doesn't."
+  # Side Panel
+  - call SidePanel:
+    dontwait: true
+    content:
+      - type: h4
+        html: <i class="fa-solid fa-note-sticky"></i> Manifest vs Runtime
+      - type: p
+        md: "**Manifest:** Declares what the app can do and what it contains."
+      - type: p
+        md: "**Runtime:** What the app does right now (dynamic values like user input, notification text, session data)."
+      - type: p
+        md: "**Security note:** Storing passwords is never a manifest job."
+  - scene: scene_5_choice
+
+scene_5_choice:
+  - call LayoutSectionTitle: "Which of the following is declared in AndroidManifest.xml?"
+    position: top
+  - call CustomText: "Which of the following is declared in AndroidManifest.xml?"
+    name: ker
+  - choice:
+      - "The color of a button on the UI":
+          - ker says: "No - UI colors are a design-time detail, not a manifest declaration."
+          - scene: scene_5_retry
+      - "The app's Activities and Services":
+          - ker says: "Correct! The manifest declares the app's components and permissions."
+          - scene: scene_6
+      - "A user's password":
+          - ker says: "Never. Passwords are runtime data, not configuration."
+          - scene: scene_5_retry
+      - "The text of a notification message at runtime":
+          - ker says: "No - notification text is dynamic, set at runtime."
+          - scene: scene_5_retry
+      - __config:
+          y: 620
+
+scene_5_retry:
+  - call CustomText: "Hint: The manifest is configuration and declarations, not user data or runtime content. Try again."
+    name: ker
+  - scene: scene_5_choice
+
+scene_6:
+  - call LayoutSectionTitle: DESTROY TOP
+  - call ProgressBar: STEP
+    step: 8
+  - show bg_lifecycle: WITH FADE
+  - show ker: explaining AT LEFT WITH CUT
+  - show android: partial AT RIGHT WITH CUT
+  # Dialogue
+  - ker says: "Activities follow a lifecycle. If you don't respect it, apps crash or leak resources."
+  - android says: "Define the core states."
+  - ker says: "In simple terms: onCreate for setup, onStart for becoming visible, onResume for interactive, onPause for partially blocked, onStop for not visible, and onDestroy for cleanup."
+  - android says: "Apply knowledge through recall test."
+  # Side Panel
+  - call SidePanel:
+    dontwait: true
+    content:
+      - type: h4
+        html: <i class="fa-solid fa-note-sticky"></i> Activity Lifecycle
+      - type: p
+        md: "Android may pause/stop your Activity when:"
+      - type: p
+        md: "- A call comes in"
+      - type: p
+        md: "- The user switches apps"
+      - type: p
+        md: "- The screen rotates (configuration change)"
+      - type: p
+        md: "------------------------"
+      - type: p
+        md: "Correct lifecycle handling prevents:"
+      - type: p
+        md: "- Losing user progress"
+      - type: p
+        md: "- Wasting battery/CPU"
+      - type: p
+        md: "- Crashes due to missing resources"
+  # Lifecycle ring interaction
+  - call Website: LOAD
+    browser: noframe
+    url: "assets/pages/lifecycle-ring.html"
+    width: 1280
+    height: 720
+  - call Website: SHOW
+  - call WaitEvent: lifecycle-complete
+  - call Website: HIDE
+  - hide ALL:
+  - scene: scene_7
+
+scene_7:
+  - call ProgressBar: STEP
+    step: 9
+  - show bg_missionboard: WITH FADE
+  - show ker: thinking AT LEFT WITH CUT
+  - show android: partial AT RIGHT WITH CUT
+  # Dialogue
+  - ker says: "Time to consolidate. You've rebuilt your Android basics."
+  - android says: "Initiate revision protocol. Confirm learning objectives achieved."
+  # Side Panel
+  - call SidePanel:
+    dontwait: true
+    content:
+      - type: h4
+        html: <i class="fa-solid fa-note-sticky"></i> Revision Cheat-Sheet
+      - type: p
+        md: "**Layers** = where functionality lives (apps/framework/runtime/kernel)"
+      - type: p
+        md: "**Components** = what an app is made of (Activity/Service/Receiver/Provider)"
+      - type: p
+        md: "**Intents** = how components/apps request actions (explicit/implicit)"
+      - type: p
+        md: "**Lifecycle** = how Android manages screens over time (create, interact, pause, stop)"
+  # Category sort revision interaction
+  - call Website: LOAD
+    browser: noframe
+    url: "assets/pages/category-sort.html"
+    width: 900
+    height: 620
+  - call Website: SHOW
+  - call WaitEvent: category-sort-complete
+  - call Website: HIDE
+  - hide ALL:
+  - scene: wrapup
+
+wrapup:
+  - call ProgressBar: STEP
+    step: 10
+  - show bg_wrapup: WITH FADE
+  - show ker: celebrating AT LEFT WITH CUT
+  - show android: online AT RIGHT WITH CUT
+  # Dialogue
+  - ker says: "You're online again, AN-DR 01d. Your foundation module is restored."
+  - android says: "Confirmed. I understand Android as a layered system, apps as components, and communication via intents."
+  - ker says: "You've rebuilt four core modules: Android's layered architecture, app components and the Manifest, Intents for communication, and the Activity lifecycle."
+  - android says: "Ready to upgrade from functionality to resilience."
+  - ker says: "Hold onto that mental model. Next, we operationalize security: permissions, safe storage, and secure defaults."
+  # Hide characters for clean reward display
+  - hide ALL:
+  - show bg_wrapup: WITH CUT
+  # Reward screen
+  - call Website: LOAD
+    browser: noframe
+    url: "assets/pages/reward-screen.html"
+    width: 900
+    height: 620
+  - call Website: SHOW
+  - call WaitEvent: reward-complete
+  - call Website: HIDE
+  - scene: endGame
+
+endGame:
+  - call ProgressBar: HIDE
+  - hide ALL:
+  - call SidePanel: CLEAR
+  - call SidePanelTips: CLEAR
+  - effect ROLLINGCREDITS:
+    endGame: true
+    text:
+      - "Boot Sequence: Android Foundations"
+      - using Cybergame

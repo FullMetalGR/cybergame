@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="cybergame-common.css">
+<style>
+  html, body { background: transparent; overflow: hidden; }
+  .container { justify-content: center; align-items: center; }
+  .branded-panel {
+    background: rgba(6, 10, 20, 0.88);
+    border: 1px solid rgba(0, 212, 255, 0.45);
+    border-radius: 8px;
+    padding: 14px 24px;
+    box-shadow: 0 0 24px rgba(0,212,255,0.15);
+    display: flex; flex-direction: column; align-items: center;
+    gap: 10px; max-width: 1080px; width: 96%;
+  }
+  .title-row { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+  .title { font-size: 18px; color: #00d4ff; text-transform: uppercase; letter-spacing: 3px; }
+  .counter {
+    font-family: 'Courier New', monospace; font-size: 14px;
+    padding: 4px 10px; border-radius: 4px;
+    border: 1px solid #ff3366; color: #ff3366;
+    background: rgba(255,51,102,0.05);
+    transition: all 0.3s ease;
+  }
+  .counter.safe { color: #39ff14; border-color: #39ff14; background: rgba(57,255,20,0.05); }
+
+  .components { display: flex; gap: 14px; width: 100%; justify-content: center; flex-wrap: wrap; }
+  .component {
+    flex: 1 1 280px; max-width: 320px;
+    padding: 14px; border-radius: 8px;
+    background: rgba(0,0,0,0.45); border: 1px solid rgba(0,212,255,0.3);
+  }
+  .component-name { font-size: 15px; color: #00d4ff; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+  .component-mini { font-size: 11px; color: rgba(224,230,240,0.55); margin-bottom: 10px; }
+
+  .toggle-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.06);
+    font-size: 12px;
+  }
+  .toggle-row:last-of-type { border-bottom: 0; }
+  .toggle-label { color: #e0e6f0; flex: 1; }
+  .toggle {
+    width: 44px; height: 22px; border-radius: 11px;
+    background: rgba(255,51,102,0.15); border: 1px solid #ff3366;
+    cursor: pointer; position: relative;
+    transition: all 0.2s ease;
+  }
+  .toggle::after {
+    content: ""; position: absolute; top: 1px; left: 1px;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: #ff3366; transition: left 0.2s ease, background 0.2s ease;
+  }
+  .toggle[aria-checked="true"] { background: rgba(57,255,20,0.15); border-color: #39ff14; }
+  .toggle[aria-checked="true"]::after { left: 23px; background: #39ff14; }
+  .toggle:focus { outline: 2px solid #00d4ff; outline-offset: 3px; }
+
+  .feedback {
+    min-height: 30px; width: 100%; max-width: 900px;
+    padding: 8px 12px; border-radius: 6px;
+    font-size: 13px; display: none;
+  }
+  .feedback.show { display: block; }
+  .feedback.correct { background: rgba(57,255,20,0.08); color: #39ff14; border: 1px solid rgba(57,255,20,0.3); }
+  .feedback.wrong { background: rgba(255,51,102,0.08); color: #ff3366; border: 1px solid rgba(255,51,102,0.3); }
+  .actions { display: flex; gap: 12px; }
+  .continue-btn { display: none; }
+  .continue-btn.visible { display: inline-block; }
+
+  .btn.pause-btn {
+    background: rgba(0,212,255,0.08); border: 1px solid #00d4ff; color: #00d4ff;
+  }
+  .btn.pause-btn.paused { background: rgba(255,170,60,0.12); border-color: #ffaa3c; color: #ffaa3c; }
+
+  /* PDF accessibility requirement: counter animations must be suppressible via reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .counter, .toggle, .toggle::after { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="branded-panel">
+    <div class="title-row">
+      <div class="title">Lockdown Control Room</div>
+      <div class="counter" id="counter" aria-live="polite">Hostile Requests: 0</div>
+    </div>
+
+    <div class="components" id="components"></div>
+
+    <div class="feedback" id="feedback" role="status" aria-live="polite"></div>
+
+    <div class="actions">
+      <button class="btn pause-btn" id="pauseBtn" aria-pressed="false" aria-label="Pause hostile request counter">Pause Timer</button>
+      <button class="btn btn-warning" id="applyBtn">Apply Lockdown</button>
+      <button class="btn btn-success continue-btn" id="continueBtn">Continue</button>
+    </div>
+  </div>
+</div>
+<script>
+const components = [
+  { id: "Profile",  name: "ProfileActivity", mini: "Private user data",
+    correct: { exported: false, login: true,  intents: false } },
+  { id: "Share",    name: "ShareActivity",   mini: "External sharing entry-point",
+    correct: { exported: true,  login: false, intents: true } },
+  { id: "Sync",     name: "SyncService",     mini: "Background maintenance",
+    correct: { exported: false, login: false, intents: false } }
+];
+
+const state = {};
+components.forEach(c => state[c.id] = { exported: true, login: false, intents: true });
+
+const componentsEl = document.getElementById("components");
+const counterEl = document.getElementById("counter");
+const feedbackEl = document.getElementById("feedback");
+const applyBtn = document.getElementById("applyBtn");
+const continueBtn = document.getElementById("continueBtn");
+const pauseBtn = document.getElementById("pauseBtn");
+
+let hostileCount = 0;
+let counterTimer = null;
+let applied = false;
+let paused = false;
+let done = false;
+
+function renderComponents() {
+  componentsEl.innerHTML = "";
+  components.forEach(c => {
+    const div = document.createElement("div");
+    div.className = "component";
+    div.innerHTML = `
+      <div class="component-name">${c.name}</div>
+      <div class="component-mini">${c.mini}</div>
+      <div class="toggle-row"><span class="toggle-label">Exported</span><div class="toggle" role="switch" tabindex="0" data-comp="${c.id}" data-key="exported" aria-checked="${state[c.id].exported}" aria-label="${c.name} exported"></div></div>
+      <div class="toggle-row"><span class="toggle-label">Requires Login</span><div class="toggle" role="switch" tabindex="0" data-comp="${c.id}" data-key="login" aria-checked="${state[c.id].login}" aria-label="${c.name} requires login"></div></div>
+      <div class="toggle-row"><span class="toggle-label">Accepts External Intents</span><div class="toggle" role="switch" tabindex="0" data-comp="${c.id}" data-key="intents" aria-checked="${state[c.id].intents}" aria-label="${c.name} accepts external intents"></div></div>
+    `;
+    componentsEl.appendChild(div);
+  });
+  componentsEl.querySelectorAll(".toggle").forEach(t => {
+    const flip = () => {
+      const comp = t.dataset.comp;
+      const key = t.dataset.key;
+      state[comp][key] = !state[comp][key];
+      t.setAttribute("aria-checked", state[comp][key]);
+    };
+    t.addEventListener("click", flip);
+    t.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); flip(); }});
+  });
+}
+
+function startCounter() {
+  // Counter ticks while at least one Profile/Sync is Exported (mimics ongoing hostile traffic)
+  counterTimer = setInterval(() => {
+    if (applied || paused) return;
+    let exposureActive = state.Profile.exported || state.Sync.exported;
+    if (exposureActive) {
+      hostileCount += 1;
+      counterEl.textContent = "Hostile Requests: " + hostileCount;
+      if (hostileCount >= 25) {
+        counterEl.classList.remove("safe");
+        counterEl.style.color = "#fff";
+        counterEl.style.background = "rgba(255,51,102,0.6)";
+      }
+    }
+  }, 600);
+}
+
+function isCorrect() {
+  return components.every(c => {
+    const s = state[c.id], want = c.correct;
+    return s.exported === want.exported && s.login === want.login && s.intents === want.intents;
+  });
+}
+
+function explainWrong() {
+  for (const c of components) {
+    const s = state[c.id], want = c.correct;
+    if (s.exported !== want.exported) {
+      return `${c.name} — Exported should be ${want.exported ? "ON" : "OFF"}.`;
+    }
+    if (s.login !== want.login) {
+      return `${c.name} — Requires Login should be ${want.login ? "ON" : "OFF"}.`;
+    }
+    if (s.intents !== want.intents) {
+      return `${c.name} — Accepts External Intents should be ${want.intents ? "ON" : "OFF"}.`;
+    }
+  }
+  return "";
+}
+
+applyBtn.addEventListener("click", () => {
+  if (applied) return;
+  if (isCorrect()) {
+    applied = true;
+    clearInterval(counterTimer);
+    counterEl.classList.add("safe");
+    counterEl.style.color = ""; counterEl.style.background = "";
+    counterEl.textContent = "Hostile Requests: contained";
+    feedbackEl.className = "feedback show correct";
+    feedbackEl.textContent = "Containment locked. Private data protected, legitimate sharing still works, sync stays internal.";
+    applyBtn.disabled = true;
+    continueBtn.classList.add("visible");
+    continueBtn.focus();
+  } else {
+    feedbackEl.className = "feedback show wrong";
+    feedbackEl.textContent = "If ProfileActivity is exported ON, hostile requests continue. " + explainWrong();
+  }
+});
+
+function togglePause() {
+  if (applied) return;
+  paused = !paused;
+  pauseBtn.setAttribute("aria-pressed", String(paused));
+  pauseBtn.classList.toggle("paused", paused);
+  pauseBtn.textContent = paused ? "Resume Timer" : "Pause Timer";
+}
+pauseBtn.addEventListener("click", togglePause);
+pauseBtn.addEventListener("keydown", e => {
+  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); togglePause(); }
+});
+
+continueBtn.addEventListener("click", () => {
+  if (done) return; done = true;
+  try { window.parent.postMessage({ type: "renjs-event", id: "lockdown-room-complete" }, "*"); } catch(e) {}
+});
+
+renderComponents();
+startCounter();
+window.addEventListener("load", () => window.focus());
+</script>
+</body>
+</html>

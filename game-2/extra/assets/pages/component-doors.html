@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="cybergame-common.css">
+<style>
+  html, body { background: transparent; overflow: hidden; }
+  .container { justify-content: center; align-items: center; }
+  .branded-panel {
+    background: rgba(6, 10, 20, 0.85);
+    border: 1px solid rgba(0, 212, 255, 0.5);
+    border-radius: 8px;
+    padding: 18px 24px;
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.15), inset 0 0 30px rgba(0, 212, 255, 0.03);
+    display: flex; flex-direction: column; align-items: center;
+    gap: 12px; max-width: 780px; width: 96%;
+  }
+  .title { font-size: 20px; color: #00d4ff; text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 0 10px rgba(0, 212, 255, 0.5); margin-bottom: 6px; }
+  .subtitle { font-size: 13px; color: rgba(0, 212, 255, 0.6); letter-spacing: 1px; max-width: 600px; text-align: center; }
+
+  /* ── Tile row ── */
+  .tiles {
+    display: flex; gap: 10px; width: 100%; justify-content: center;
+  }
+  .tile {
+    flex: 1; max-width: 200px; display: flex; flex-direction: column;
+    align-items: center; gap: 6px; padding: 12px 8px;
+    border: 1px solid rgba(0,212,255,0.2); border-radius: 6px;
+    background: rgba(0,212,255,0.03); cursor: pointer;
+    transition: all 0.3s ease; position: relative;
+  }
+  .tile:hover { border-color: rgba(0,212,255,0.5); background: rgba(0,212,255,0.06); }
+  .tile.active {
+    border-color: #00d4ff; background: rgba(0,212,255,0.1);
+    box-shadow: 0 0 12px rgba(0,212,255,0.2);
+  }
+  .tile.active::after {
+    content: ""; position: absolute; bottom: -7px; left: 50%; transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 7px solid transparent; border-right: 7px solid transparent;
+    border-top: 7px solid #00d4ff;
+  }
+  .tile.explored { border-color: rgba(57,255,20,0.4); }
+  .tile.explored .tile-name { color: #39ff14; }
+  .tile.explored .tile-icon svg { filter: drop-shadow(0 0 4px rgba(57,255,20,0.6)); }
+  .tile.explored .tile-icon svg .icon-stroke { stroke: #39ff14; }
+  .tile.explored .tile-icon svg .icon-fill { fill: rgba(57,255,20,0.15); }
+  .tile.explored.active { border-color: #39ff14; background: rgba(57,255,20,0.08); box-shadow: 0 0 12px rgba(57,255,20,0.2); }
+  .tile.explored.active::after { border-top-color: #39ff14; }
+
+  .tile-icon { width: 40px; height: 40px; transition: filter 0.3s; }
+  .tile-icon svg { width: 100%; height: 100%; filter: drop-shadow(0 0 4px rgba(0,212,255,0.5)); }
+  .tile-icon svg .icon-stroke { stroke: #00d4ff; fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .tile-icon svg .icon-fill { fill: rgba(0,212,255,0.1); }
+  .tile:hover .tile-icon svg { filter: drop-shadow(0 0 8px rgba(0,212,255,0.7)); }
+  .tile-name { font-size: 12px; font-weight: bold; color: #00d4ff; text-align: center; line-height: 1.3; }
+  .tile-type { font-size: 10px; color: rgba(224,230,240,0.4); text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* ── Detail panel ── */
+  .detail-panel {
+    width: 100%; min-height: 170px;
+    border: 1px solid rgba(0,212,255,0.15); border-radius: 6px;
+    background: rgba(0,0,0,0.2); padding: 16px 22px;
+  }
+  .detail-placeholder {
+    text-align: center; color: rgba(224,230,240,0.3); font-size: 14px;
+    padding: 40px 0;
+  }
+  .detail-content { animation: detailFade 0.35s ease-out; }
+  @keyframes detailFade {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .detail-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 10px; gap: 10px; flex-wrap: wrap;
+  }
+  .detail-name {
+    font-size: 16px; font-weight: bold; color: #00d4ff;
+  }
+  .detail-name .type-tag {
+    font-size: 11px; color: rgba(224,230,240,0.5); margin-left: 8px;
+    font-weight: normal; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .badges { display: flex; gap: 8px; }
+  .badge {
+    padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: bold;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .badge.export-yes { background: rgba(255,51,102,0.15); color: #ff3366; border: 1px solid rgba(255,51,102,0.3); }
+  .badge.export-no { background: rgba(57,255,20,0.1); color: #39ff14; border: 1px solid rgba(57,255,20,0.3); }
+  .badge.risk-high { background: rgba(255,51,102,0.15); color: #ff3366; border: 1px solid rgba(255,51,102,0.3); }
+  .badge.risk-low { background: rgba(57,255,20,0.1); color: #39ff14; border: 1px solid rgba(57,255,20,0.3); }
+
+  .detail-desc {
+    color: #e0e6f0; font-size: 14px; line-height: 1.55;
+  }
+
+  .attack-note {
+    margin-top: 10px; padding: 8px 12px; border-radius: 4px;
+    background: rgba(255,51,102,0.06); border: 1px solid rgba(255,51,102,0.2);
+    color: #ff9999; font-size: 12px; line-height: 1.5;
+    font-family: 'Courier New', monospace;
+  }
+
+  .bottom-bar { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .progress-dots { display: flex; gap: 6px; }
+  .dot {
+    width: 12px; height: 12px; border-radius: 50%;
+    border: 2px solid rgba(0,212,255,0.3); transition: all 0.3s;
+  }
+  .dot.done { border-color: #39ff14; background: rgba(57,255,20,0.4); }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="branded-panel">
+    <div class="title">Component Exposure</div>
+    <div class="subtitle">Select each component to inspect its exposure and risk</div>
+
+    <div class="tiles" id="tiles"></div>
+
+    <div class="detail-panel" id="detailPanel">
+      <div class="detail-placeholder">Select a component above to inspect it</div>
+    </div>
+
+    <div class="bottom-bar">
+      <div class="progress-dots" id="progressDots"></div>
+      <button class="btn btn-success continue-btn" id="continueBtn" style="display:none;">Continue</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const icons = {
+  activity: `<svg viewBox="0 0 40 40">
+    <rect class="icon-fill" x="5" y="7" width="30" height="20" rx="2"/>
+    <rect class="icon-stroke" x="5" y="7" width="30" height="20" rx="2"/>
+    <line class="icon-stroke" x1="5" y1="11" x2="35" y2="11" opacity="0.5"/>
+    <circle cx="8" cy="9" r="0.7" style="fill:currentColor"/>
+    <line class="icon-stroke" x1="14" y1="33" x2="26" y2="33"/>
+    <line class="icon-stroke" x1="20" y1="27" x2="20" y2="33"/>
+    <line class="icon-stroke" x1="11" y1="16" x2="20" y2="16" opacity="0.6"/>
+    <line class="icon-stroke" x1="11" y1="20" x2="29" y2="20" opacity="0.6"/>
+    <line class="icon-stroke" x1="11" y1="23" x2="23" y2="23" opacity="0.4"/>
+  </svg>`,
+  service: `<svg viewBox="0 0 40 40">
+    <circle class="icon-fill" cx="20" cy="20" r="5"/>
+    <circle class="icon-stroke" cx="20" cy="20" r="5"/>
+    <path class="icon-stroke" d="M20 5 L20 9 M20 31 L20 35 M5 20 L9 20 M31 20 L35 20 M9.4 9.4 L12.2 12.2 M27.8 27.8 L30.6 30.6 M9.4 30.6 L12.2 27.8 M27.8 12.2 L30.6 9.4"/>
+    <circle class="icon-stroke" cx="20" cy="20" r="11" opacity="0.3"/>
+  </svg>`,
+  receiver: `<svg viewBox="0 0 40 40">
+    <path class="icon-fill" d="M14 22 L26 22 L24 34 L16 34 Z"/>
+    <path class="icon-stroke" d="M14 22 L26 22 L24 34 L16 34 Z"/>
+    <line class="icon-stroke" x1="20" y1="22" x2="20" y2="34" opacity="0.4"/>
+    <path class="icon-stroke" d="M11 18 Q20 11 29 18" opacity="0.7"/>
+    <path class="icon-stroke" d="M8 14 Q20 4 32 14" opacity="0.5"/>
+    <circle cx="20" cy="22" r="2" class="icon-fill"/>
+    <circle class="icon-stroke" cx="20" cy="22" r="2"/>
+  </svg>`
+};
+
+const components = [
+  {
+    icon: icons.activity, name: "MainActivity", type: "Activity",
+    exported: true, risk: "high",
+    desc: "This Activity is exported — any app can launch it. If it shows sensitive content, an attacker could bypass your login screen entirely.",
+    attack: "A malicious app could call Intent(MainActivity) and reach the screen directly, skipping your authentication flow."
+  },
+  {
+    icon: icons.service, name: "DataSyncService", type: "Service",
+    exported: false, risk: "low",
+    desc: "This Service is NOT exported — only your app can trigger it. Background services should stay internal to prevent unauthorized data syncs.",
+    attack: null
+  },
+  {
+    icon: icons.receiver, name: "PushReceiver", type: "Broadcast Receiver",
+    exported: true, risk: "high",
+    desc: "This Receiver is exported — other apps can send broadcasts to it. Without validation, a malicious app could feed it fake data or trigger unintended actions.",
+    attack: "A spoofed broadcast intent could deliver fake push payloads, potentially triggering UI states or data writes you didn't intend."
+  }
+];
+
+const tilesEl = document.getElementById("tiles");
+const detailPanel = document.getElementById("detailPanel");
+const dotsEl = document.getElementById("progressDots");
+const continueBtn = document.getElementById("continueBtn");
+const explored = new Set();
+
+components.forEach((c, i) => {
+  const tile = document.createElement("div");
+  tile.className = "tile";
+  tile.tabIndex = 0;
+  tile.setAttribute("role", "tab");
+  tile.innerHTML = `
+    <div class="tile-icon">${c.icon}</div>
+    <div class="tile-name">${c.name}</div>
+    <div class="tile-type">${c.type}</div>
+  `;
+  tile.addEventListener("click", () => selectTile(i));
+  tile.addEventListener("keydown", e => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectTile(i); }
+  });
+  tilesEl.appendChild(tile);
+
+  const dot = document.createElement("div");
+  dot.className = "dot";
+  dotsEl.appendChild(dot);
+});
+
+function selectTile(idx) {
+  const tiles = tilesEl.querySelectorAll(".tile");
+  tiles.forEach(t => t.classList.remove("active"));
+  tiles[idx].classList.add("active");
+
+  if (!explored.has(idx)) {
+    explored.add(idx);
+    tiles[idx].classList.add("explored");
+    dotsEl.children[idx].classList.add("done");
+    if (explored.size === components.length) {
+      setTimeout(() => { continueBtn.style.display = "inline-block"; continueBtn.classList.add("fade-in"); }, 400);
+    }
+  }
+
+  const c = components[idx];
+  const exportBadge = c.exported
+    ? '<span class="badge export-yes">Exported: YES</span>'
+    : '<span class="badge export-no">Exported: NO</span>';
+  const riskBadge = c.risk === "high"
+    ? '<span class="badge risk-high">Risk: HIGH</span>'
+    : '<span class="badge risk-low">Risk: LOW</span>';
+  const attackHtml = c.attack
+    ? `<div class="attack-note">Attack: ${c.attack}</div>`
+    : "";
+
+  detailPanel.innerHTML = `
+    <div class="detail-content">
+      <div class="detail-header">
+        <div class="detail-name">${c.name}<span class="type-tag">${c.type}</span></div>
+        <div class="badges">${exportBadge}${riskBadge}</div>
+      </div>
+      <div class="detail-desc">${c.desc}</div>
+      ${attackHtml}
+    </div>
+  `;
+}
+
+continueBtn.addEventListener("click", () => {
+  try { window.parent.postMessage({ type: "renjs-event", id: "component-doors-complete" }, "*"); } catch(e) {}
+});
+
+window.addEventListener("load", () => window.focus());
+</script>
+</body>
+</html>

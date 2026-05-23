@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="cybergame-common.css">
+<style>
+  html, body { background: transparent; overflow: hidden; }
+  .page-wrapper {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100%; padding: 14px;
+  }
+  .panel {
+    max-width: 620px; width: 100%; display: flex; flex-direction: column;
+    align-items: center; gap: 10px;
+    background: rgba(6, 10, 20, 0.85);
+    border: 1px solid rgba(0, 212, 255, 0.5);
+    border-radius: 8px;
+    padding: 18px 24px;
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.15), inset 0 0 30px rgba(0, 212, 255, 0.03);
+  }
+  .title { font-size: 20px; color: #00d4ff; text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 0 10px rgba(0, 212, 255, 0.5); margin-bottom: 6px; }
+
+  .dnd-section { width: 100%; }
+  .dnd-label { font-size: 13px; color: #ffd700; font-weight: bold; margin-bottom: 6px; text-align: center; }
+
+  .cards-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 10px; min-height: 40px; }
+
+  .pillars-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  .pillar-zone {
+    border: 2px dashed rgba(0,212,255,0.2); border-radius: 6px;
+    padding: 8px; min-height: 70px; transition: all 0.2s;
+  }
+  .pillar-zone.drag-over { border-color: #00d4ff; background: rgba(0,212,255,0.05); }
+  .pillar-zone.correct { border-color: #39ff14; }
+  .pillar-zone .zone-title { font-size: 12px; color: #00d4ff; text-transform: uppercase; margin-bottom: 4px; font-weight: bold; }
+
+  .dnd-card {
+    padding: 8px 14px; background: linear-gradient(135deg, #0a1a2a, #0d2d4d);
+    border: 1px solid #00d4ff; border-radius: 4px; font-size: 13px;
+    color: #e0e6f0; cursor: grab; user-select: none; transition: all 0.2s;
+  }
+  .dnd-card:hover { box-shadow: 0 0 8px rgba(0,212,255,0.4); }
+  .dnd-card.dragging { opacity: 0.4; }
+  .dnd-card.placed { cursor: default; pointer-events: none; border: none; background: transparent; color: #39ff14; text-shadow: 0 0 4px rgba(57,255,20,0.4); }
+
+  .feedback-area { font-size: 13px; min-height: 20px; text-align: center; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="page-wrapper">
+<div class="panel">
+  <div class="title">Defence Audit</div>
+  <div class="dnd-section">
+    <div class="dnd-label">Drag each action into the correct pillar</div>
+    <div class="cards-row" id="cardsRow"></div>
+    <div class="pillars-grid" id="pillarsGrid"></div>
+    <div class="feedback-area" id="dndFeedback"></div>
+  </div>
+</div>
+</div>
+
+<script>
+const dndItems = [
+  { text: "Remove unused permissions", pillar: "least-privilege" },
+  { text: "Encrypt stored tokens", pillar: "secure-storage" },
+  { text: "Redact logs", pillar: "logging-hygiene" },
+  { text: "Avoid exporting private activities", pillar: "controlled-exposure" }
+];
+
+const pillarDefs = [
+  { id: "least-privilege", name: "Least Privilege" },
+  { id: "secure-storage", name: "Secure Storage" },
+  { id: "logging-hygiene", name: "Logging Hygiene" },
+  { id: "controlled-exposure", name: "Controlled Exposure" }
+];
+
+const cardsRow = document.getElementById("cardsRow");
+const pillarsGrid = document.getElementById("pillarsGrid");
+const dndFeedback = document.getElementById("dndFeedback");
+let dndPlaced = 0;
+
+const shuffled = [...dndItems].sort(() => Math.random() - 0.5);
+
+shuffled.forEach((item, i) => {
+  const card = document.createElement("div");
+  card.className = "dnd-card";
+  card.textContent = item.text;
+  card.draggable = true;
+  card.id = `dnd-${i}`;
+  card.dataset.pillar = item.pillar;
+
+  card.addEventListener("dragstart", e => { e.dataTransfer.setData("text/plain", card.id); card.classList.add("dragging"); });
+  card.addEventListener("dragend", () => card.classList.remove("dragging"));
+  cardsRow.appendChild(card);
+});
+
+pillarDefs.forEach(p => {
+  const zone = document.createElement("div");
+  zone.className = "pillar-zone";
+  zone.dataset.pillar = p.id;
+  zone.innerHTML = `<div class="zone-title">${p.name}</div>`;
+
+  zone.addEventListener("dragover", e => { e.preventDefault(); zone.classList.add("drag-over"); });
+  zone.addEventListener("dragleave", () => zone.classList.remove("drag-over"));
+  zone.addEventListener("drop", e => {
+    e.preventDefault();
+    zone.classList.remove("drag-over");
+    const cardId = e.dataTransfer.getData("text/plain");
+    const card = document.getElementById(cardId);
+    if (!card || card.classList.contains("placed")) return;
+
+    if (card.dataset.pillar === p.id) {
+      card.classList.add("placed");
+      card.draggable = false;
+      zone.appendChild(card);
+      zone.classList.add("correct");
+      dndPlaced++;
+      if (dndPlaced === dndItems.length) {
+        dndFeedback.innerHTML = '<span class="feedback-correct">All actions correctly assigned!</span>';
+        setTimeout(() => {
+          try { window.parent.postMessage({ type: "renjs-event", id: "revision-audit-complete" }, "*"); } catch(e) {}
+        }, 1500);
+      }
+    } else {
+      dndFeedback.innerHTML = '<span class="feedback-incorrect">Each action belongs to a specific defence layer. Try again.</span>';
+      setTimeout(() => { dndFeedback.innerHTML = ""; }, 2000);
+    }
+  });
+  pillarsGrid.appendChild(zone);
+});
+
+window.addEventListener("load", () => window.focus());
+</script>
+</body>
+</html>

@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="cybergame-common.css">
+<style>
+  html, body { background: transparent; overflow: hidden; }
+  .container { justify-content: center; align-items: center; }
+  .branded-panel {
+    background: rgba(6, 10, 20, 0.85);
+    border: 1px solid rgba(0, 212, 255, 0.5);
+    border-radius: 8px;
+    padding: 18px 24px;
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.15), inset 0 0 30px rgba(0, 212, 255, 0.03);
+    display: flex; flex-direction: column; align-items: center;
+    gap: 10px; max-width: 740px; width: 96%;
+  }
+  .title { font-size: 20px; color: #00d4ff; text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 0 10px rgba(0, 212, 255, 0.5); margin-bottom: 6px; }
+
+  .fragment-card {
+    width: 100%; max-width: 700px;
+    background: linear-gradient(135deg, #0a1a2a, #0d2d4d);
+    border: 1px solid rgba(0,212,255,0.3); border-radius: 8px;
+    padding: 14px 18px; transition: all 0.4s ease;
+  }
+  .fragment-card.active { border-color: #00d4ff; }
+  .fragment-card.done { border-color: #39ff14; opacity: 0.6; }
+  .fragment-card.collapsed { max-height: 0; padding: 0; border: none; overflow: hidden; margin: 0; }
+
+  .frag-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .frag-label { color: #ffd700; font-size: 13px; font-weight: bold; text-transform: uppercase; }
+  .frag-status { font-size: 12px; }
+
+  .code-line {
+    font-family: 'Courier New', monospace; font-size: 14px;
+    background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 4px;
+    color: #e0e6f0; margin-bottom: 10px;
+  }
+  .code-line .keyword { color: #00d4ff; }
+  .code-line .string { color: #39ff14; }
+  .code-line .danger { color: #ff3366; }
+
+  .step-area { margin-top: 6px; }
+  .step-label { font-size: 12px; color: rgba(224,230,240,0.5); text-transform: uppercase; margin-bottom: 6px; }
+
+  .classify-btns { display: flex; gap: 10px; }
+  .classify-btn {
+    padding: 8px 24px; border-radius: 4px; cursor: pointer;
+    font-family: 'Courier New', monospace; font-size: 14px;
+    border: 1px solid; transition: all 0.2s ease; background: transparent;
+  }
+  .classify-btn.safe { color: #39ff14; border-color: rgba(57,255,20,0.4); }
+  .classify-btn.safe:hover { background: rgba(57,255,20,0.1); }
+  .classify-btn.unsafe { color: #ff3366; border-color: rgba(255,51,102,0.4); }
+  .classify-btn.unsafe:hover { background: rgba(255,51,102,0.1); }
+
+  .fix-options { display: none; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .fix-options.visible { display: flex; }
+
+  .fix-btn {
+    text-align: left; padding: 10px 14px; border-radius: 4px;
+    background: rgba(10,14,26,0.6); border: 1px solid rgba(0,212,255,0.2);
+    color: #e0e6f0; font-family: 'Courier New', monospace; font-size: 13px;
+    cursor: pointer; transition: all 0.2s ease;
+  }
+  .fix-btn:hover { border-color: #00d4ff; box-shadow: 0 0 8px rgba(0,212,255,0.2); }
+  .fix-btn.correct-fix { border-color: #39ff14; background: rgba(57,255,20,0.1); color: #39ff14; }
+  .fix-btn.wrong-fix { border-color: #ff3366; background: rgba(255,51,102,0.1); color: #ff3366; }
+
+  .frag-feedback { font-size: 13px; margin-top: 6px; min-height: 20px; }
+
+  .progress-row { display: flex; gap: 8px; align-items: center; }
+  .progress-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(0,212,255,0.3); transition: all 0.3s; }
+  .progress-dot.done { border-color: #39ff14; background: rgba(57,255,20,0.3); }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="branded-panel">
+  <div class="title">Code Fragment Review</div>
+
+  <div id="fragmentArea"></div>
+
+  <div class="progress-row" id="progressRow"></div>
+  </div>
+</div>
+
+<script>
+const fragments = [
+  {
+    label: "Fragment A",
+    code: '<span class="keyword">SharedPreferences</span>.edit().putString(<span class="string">"auth_token"</span>, token).<span class="keyword">apply</span>()',
+    desc: "Saving auth token in plain preferences",
+    correctClass: "unsafe",
+    fixes: [
+      { text: "Store token in plain preferences but rename the key", correct: false },
+      { text: "Store token using encrypted storage", correct: true },
+      { text: "Store token in logs for recovery", correct: false }
+    ],
+    wrongFeedback: "Cosmetic changes don't equal security."
+  },
+  {
+    label: "Fragment B",
+    code: '<span class="keyword">const</span> API_KEY = <span class="danger">"sk-a83jd92kf03mfk29"</span>',
+    desc: "Hardcoded API key inside the app",
+    correctClass: "unsafe",
+    fixes: [
+      { text: "Obfuscate the key and keep it in the app", correct: false },
+      { text: "Avoid embedding secrets; use server-side controls or secure delivery", correct: true },
+      { text: "Put the key in a comment instead", correct: false }
+    ],
+    wrongFeedback: "Obfuscation and comments are not security measures."
+  },
+  {
+    label: "Fragment C",
+    code: '<span class="keyword">SharedPreferences</span>.edit().putString(<span class="string">"theme"</span>, <span class="string">"dark"</span>).<span class="keyword">apply</span>()',
+    desc: "Storing non-sensitive UI theme preference (dark mode)",
+    correctClass: "safe",
+    fixes: [],
+    wrongFeedback: ""
+  },
+  {
+    label: "Fragment D",
+    code: '<span class="keyword">SharedPreferences</span>.edit().putString(<span class="danger">"user_password"</span>, password).<span class="keyword">apply</span>()',
+    desc: "Saving user password locally for auto-login",
+    correctClass: "unsafe",
+    fixes: [
+      { text: "Store password in plain text but hide the screen", correct: false },
+      { text: "Never store raw passwords; use secure authentication tokens instead", correct: true },
+      { text: "Convert password to uppercase before storing", correct: false }
+    ],
+    wrongFeedback: "Cosmetic changes don't equal security."
+  }
+];
+
+const fragmentArea = document.getElementById("fragmentArea");
+const progressRow = document.getElementById("progressRow");
+let currentIdx = 0;
+let solved = 0;
+
+fragments.forEach((f, i) => {
+  const dot = document.createElement("div");
+  dot.className = "progress-dot";
+  progressRow.appendChild(dot);
+});
+
+function renderFragment(idx) {
+  const f = fragments[idx];
+  fragmentArea.innerHTML = "";
+
+  const card = document.createElement("div");
+  card.className = "fragment-card active fade-in";
+  card.innerHTML = `
+    <div class="frag-header">
+      <div class="frag-label">${f.label}: ${f.desc}</div>
+      <div class="frag-status">${idx + 1}/${fragments.length}</div>
+    </div>
+    <div class="code-line">${f.code}</div>
+    <div class="step-area">
+      <div class="step-label">Step 1: Classify this code</div>
+      <div class="classify-btns" id="classifyBtns">
+        <button class="classify-btn safe">SAFE</button>
+        <button class="classify-btn unsafe">UNSAFE</button>
+      </div>
+      <div class="fix-options" id="fixOptions"></div>
+      <div class="frag-feedback" id="fragFeedback"></div>
+    </div>
+  `;
+  fragmentArea.appendChild(card);
+
+  const classifyBtns = card.querySelector("#classifyBtns");
+  const fixOptions = card.querySelector("#fixOptions");
+  const fragFeedback = card.querySelector("#fragFeedback");
+
+  classifyBtns.querySelectorAll(".classify-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const choice = btn.classList.contains("safe") ? "safe" : "unsafe";
+      const isCorrect = choice === f.correctClass;
+
+      classifyBtns.querySelectorAll(".classify-btn").forEach(b => b.disabled = true);
+
+      if (isCorrect && f.correctClass === "safe") {
+        fragFeedback.innerHTML = '<span class="feedback-correct">Correct! This is safe — no fix needed.</span>';
+        progressRow.children[idx].classList.add("done");
+        solved++;
+        setTimeout(() => advance(), 1500);
+      } else if (isCorrect && f.correctClass === "unsafe") {
+        fragFeedback.innerHTML = '<span class="feedback-correct">Correct! Now choose the best fix.</span>';
+        showFixes(f, fixOptions, fragFeedback, idx);
+      } else {
+        fragFeedback.innerHTML = `<span class="feedback-incorrect">Incorrect. ${f.correctClass === "safe" ? "This stores non-sensitive data — it's fine." : "This stores sensitive data insecurely."}</span>`;
+        setTimeout(() => {
+          classifyBtns.querySelectorAll(".classify-btn").forEach(b => b.disabled = false);
+          fragFeedback.innerHTML = "";
+        }, 1500);
+      }
+    });
+  });
+}
+
+function showFixes(f, fixOptions, fragFeedback, idx) {
+  fixOptions.innerHTML = '<div class="step-label" style="margin-top:8px">Step 2: Choose the best fix</div>';
+  f.fixes.forEach(fix => {
+    const btn = document.createElement("button");
+    btn.className = "fix-btn";
+    btn.textContent = fix.text;
+    btn.addEventListener("click", () => {
+      fixOptions.querySelectorAll(".fix-btn").forEach(b => b.disabled = true);
+      if (fix.correct) {
+        btn.classList.add("correct-fix");
+        fragFeedback.innerHTML = '<span class="feedback-correct">Correct fix applied!</span>';
+        progressRow.children[idx].classList.add("done");
+        solved++;
+        setTimeout(() => advance(), 1500);
+      } else {
+        btn.classList.add("wrong-fix");
+        fragFeedback.innerHTML = `<span class="feedback-incorrect">${f.wrongFeedback} Try again.</span>`;
+        setTimeout(() => {
+          fixOptions.querySelectorAll(".fix-btn").forEach(b => { b.disabled = false; b.classList.remove("wrong-fix"); });
+          fragFeedback.innerHTML = "";
+        }, 1500);
+      }
+    });
+    fixOptions.appendChild(btn);
+  });
+  fixOptions.classList.add("visible");
+}
+
+function advance() {
+  currentIdx++;
+  if (currentIdx < fragments.length) {
+    renderFragment(currentIdx);
+  } else {
+    fragmentArea.innerHTML = '<div class="fragment-card active fade-in" style="text-align:center;padding:30px"><span class="feedback-correct" style="font-size:18px">All fragments reviewed!</span></div>';
+    setTimeout(() => {
+      try { window.parent.postMessage({ type: "renjs-event", id: "code-review-complete" }, "*"); } catch(e) {}
+    }, 1500);
+  }
+}
+
+renderFragment(0);
+window.addEventListener("load", () => window.focus());
+</script>
+</body>
+</html>

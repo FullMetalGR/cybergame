@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="cybergame-common.css">
+<style>
+  html, body { background: transparent; overflow: hidden; }
+  .container { justify-content: center; align-items: center; }
+  .branded-panel {
+    background: rgba(6, 10, 20, 0.88);
+    border: 1px solid rgba(0, 212, 255, 0.45);
+    border-radius: 8px;
+    padding: 18px 28px;
+    box-shadow: 0 0 24px rgba(0,212,255,0.15);
+    display: flex; flex-direction: column; align-items: center;
+    gap: 14px; max-width: 1000px; width: 96%;
+  }
+  .title { font-size: 20px; color: #00d4ff; text-transform: uppercase; letter-spacing: 3px; }
+  .prompt { font-size: 14px; color: #e0e6f0; text-align: center; max-width: 700px; }
+  .alerts { display: flex; gap: 18px; width: 100%; justify-content: center; flex-wrap: wrap; }
+  .alert-card {
+    flex: 1 1 280px; max-width: 300px;
+    padding: 16px; border-radius: 8px; cursor: pointer;
+    background: rgba(0,0,0,0.5);
+    border: 2px solid rgba(0,212,255,0.3);
+    transition: all 0.25s ease;
+    position: relative;
+  }
+  .alert-card:hover { transform: translateY(-3px); border-color: #00d4ff; }
+  .alert-card:focus { outline: 2px solid #00d4ff; outline-offset: 3px; }
+  .alert-card.disabled { pointer-events: none; opacity: 0.5; }
+  .alert-card.correct {
+    border-color: #ffaa3c; background: rgba(255,170,60,0.1);
+    animation: orangePulse 1.6s ease-in-out infinite;
+  }
+  .alert-card.wrong { border-color: #ff3366; background: rgba(255,51,102,0.08); }
+  @keyframes orangePulse {
+    0%,100% { box-shadow: 0 0 12px rgba(255,170,60,0.4); }
+    50%     { box-shadow: 0 0 28px rgba(255,170,60,0.8); }
+  }
+  .severity {
+    display: inline-block; padding: 2px 8px; border-radius: 4px;
+    font-size: 10px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px;
+  }
+  .sev-low { background: rgba(0,212,255,0.2); color: #00d4ff; }
+  .sev-med { background: rgba(255,170,60,0.2); color: #ffaa3c; }
+  .sev-high { background: rgba(255,51,102,0.25); color: #ff3366; }
+  .alert-desc { font-size: 13px; color: #e0e6f0; line-height: 1.4; }
+  .feedback {
+    width: 100%; min-height: 36px;
+    padding: 10px 14px; border-radius: 6px;
+    font-size: 13px; line-height: 1.5;
+    display: none;
+  }
+  .feedback.show { display: block; }
+  .feedback.correct { background: rgba(57,255,20,0.08); color: #39ff14; border: 1px solid rgba(57,255,20,0.3); }
+  .feedback.wrong { background: rgba(255,51,102,0.08); color: #ff3366; border: 1px solid rgba(255,51,102,0.3); }
+  .feedback.hint { background: rgba(255,170,60,0.08); color: #ffaa3c; border: 1px solid rgba(255,170,60,0.3); }
+  .continue-btn { opacity: 0; pointer-events: none; transition: opacity 0.4s ease; }
+  .continue-btn.visible { opacity: 1; pointer-events: auto; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="branded-panel">
+    <div class="title">Incident Triage</div>
+    <div class="prompt">Which alert most strongly indicates a security incident affecting <strong>private user data</strong>?</div>
+
+    <div class="alerts" id="alerts"></div>
+
+    <div class="feedback" id="feedback"></div>
+    <button class="btn btn-success continue-btn" id="continueBtn">Continue</button>
+  </div>
+</div>
+<script>
+const alerts = [
+  { id: 1, sev: "low", sevLabel: "Low", desc: "Battery usage increased by 6% after update." },
+  { id: 2, sev: "high", sevLabel: "Critical", desc: "ProfileActivity started from an external source multiple times.", correct: true },
+  { id: 3, sev: "med", sevLabel: "Medium", desc: "UI theme preference reset to default." }
+];
+const wrongFeedback = {
+  1: "Availability and battery issues are important — but privacy alarms take priority here.",
+  3: "UI state changes don't typically indicate an incident affecting private user data."
+};
+const hintText = "Private screens should not be triggered externally.";
+const correctText = "Correct — a private screen opened externally suggests component exposure with possible data leakage.";
+
+const alertsEl = document.getElementById("alerts");
+const feedbackEl = document.getElementById("feedback");
+const continueBtn = document.getElementById("continueBtn");
+let attempts = 0;
+let done = false;
+
+alerts.forEach(a => {
+  const card = document.createElement("div");
+  card.className = "alert-card";
+  card.setAttribute("tabindex", "0");
+  card.setAttribute("role", "button");
+  card.setAttribute("aria-label", `Alert ${a.id} — severity ${a.sevLabel} — ${a.desc}`);
+  card.innerHTML = `
+    <span class="severity sev-${a.sev}">${a.sevLabel}</span>
+    <div class="alert-desc">${a.desc}</div>
+  `;
+  card.addEventListener("click", () => pick(a, card));
+  card.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(a, card); }});
+  alertsEl.appendChild(card);
+});
+
+function pick(a, card) {
+  if (done) return;
+  if (a.correct) {
+    document.querySelectorAll(".alert-card").forEach(c => c.classList.add("disabled"));
+    card.classList.add("correct");
+    card.classList.remove("disabled");
+    feedbackEl.className = "feedback show correct";
+    feedbackEl.textContent = correctText;
+    continueBtn.classList.add("visible");
+    continueBtn.focus();
+  } else {
+    attempts++;
+    card.classList.add("wrong");
+    feedbackEl.className = "feedback show wrong";
+    feedbackEl.textContent = wrongFeedback[a.id];
+    if (attempts >= 1) {
+      setTimeout(() => {
+        if (!feedbackEl.classList.contains("correct")) {
+          feedbackEl.className = "feedback show hint";
+          feedbackEl.textContent = "Hint: " + hintText;
+        }
+      }, 1800);
+    }
+  }
+}
+
+continueBtn.addEventListener("click", () => {
+  if (done) return; done = true;
+  try { window.parent.postMessage({ type: "renjs-event", id: "triage-alerts-complete" }, "*"); } catch(e) {}
+});
+
+window.addEventListener("load", () => window.focus());
+</script>
+</body>
+</html>

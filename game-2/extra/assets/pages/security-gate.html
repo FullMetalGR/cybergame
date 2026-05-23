@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="cybergame-common.css">
+<style>
+  html, body { background: transparent; overflow: hidden; }
+  .container { justify-content: center; align-items: center; }
+  .branded-panel {
+    background: rgba(6, 10, 20, 0.85);
+    border: 1px solid rgba(0, 212, 255, 0.5);
+    border-radius: 8px;
+    padding: 16px 22px;
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.15), inset 0 0 30px rgba(0, 212, 255, 0.03);
+    display: flex; flex-direction: column; align-items: center;
+    gap: 10px; max-width: 740px; width: 96%;
+  }
+  .title { font-size: 20px; color: #00d4ff; text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 0 10px rgba(0, 212, 255, 0.5); margin-bottom: 6px; }
+
+  .example-card {
+    background: rgba(57,255,20,0.05); border: 1px solid rgba(57,255,20,0.2);
+    border-radius: 8px; padding: 12px 16px; max-width: 660px; width: 100%;
+    transition: all 0.4s ease;
+  }
+  .example-card.collapsed { max-height: 0; padding: 0; border: none; overflow: hidden; margin: 0; }
+  .example-label { font-size: 12px; color: #39ff14; text-transform: uppercase; margin-bottom: 6px; font-weight: bold; }
+  .example-name { font-size: 14px; color: #e0e6f0; margin-bottom: 8px; }
+  .example-toggles { display: flex; gap: 14px; flex-wrap: wrap; }
+  .example-toggle { font-size: 12px; color: rgba(224,230,240,0.7); }
+  .example-toggle .val { color: #39ff14; font-weight: bold; }
+  .example-toggle .reason { color: rgba(224,230,240,0.4); font-style: italic; }
+
+  .gates-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; width: 100%; max-width: 700px; }
+
+  .gate-card {
+    width: 210px; background: linear-gradient(180deg, rgba(10,14,26,0.9), rgba(10,14,26,0.95));
+    border: 1px solid rgba(0,212,255,0.2); border-radius: 8px;
+    padding: 14px; transition: all 0.3s ease;
+  }
+  .gate-card.correct { border-color: #39ff14; box-shadow: 0 0 10px rgba(57,255,20,0.2); }
+  .gate-card.wrong { border-color: #ff3366; box-shadow: 0 0 10px rgba(255,51,102,0.2); }
+
+  .gate-name { font-size: 14px; font-weight: bold; color: #00d4ff; margin-bottom: 4px; }
+  .gate-desc { font-size: 11px; color: rgba(224,230,240,0.5); margin-bottom: 10px; }
+
+  .toggle-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .toggle-label { font-size: 12px; color: rgba(224,230,240,0.7); }
+
+  .toggle-switch {
+    position: relative; width: 44px; height: 24px; cursor: pointer;
+  }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(255,51,102,0.2); border: 1px solid rgba(255,51,102,0.4);
+    border-radius: 12px; transition: all 0.3s;
+  }
+  .toggle-slider::before {
+    content: ""; position: absolute; height: 18px; width: 18px;
+    left: 2px; bottom: 2px; background: #ff3366;
+    border-radius: 50%; transition: all 0.3s;
+  }
+  .toggle-switch input:checked + .toggle-slider {
+    background: rgba(57,255,20,0.2); border-color: rgba(57,255,20,0.4);
+  }
+  .toggle-switch input:checked + .toggle-slider::before {
+    transform: translateX(20px); background: #39ff14;
+  }
+  .toggle-switch input:focus + .toggle-slider { box-shadow: 0 0 6px rgba(0,212,255,0.5); }
+
+  .gate-feedback { font-size: 12px; margin-top: 8px; min-height: 16px; }
+
+  .check-all-row { display: flex; gap: 12px; align-items: center; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="branded-panel">
+  <div class="title">Security Gate Configuration</div>
+
+  <!-- Worked example -->
+  <div class="example-card" id="exampleCard">
+    <div class="example-label">Worked Example: HelpActivity (shows public FAQ)</div>
+    <div class="example-toggles">
+      <div class="example-toggle"><span class="val">Exported: ON</span> <span class="reason">— public FAQ, safe to access from any app</span></div>
+      <div class="example-toggle"><span class="val">Requires Login: OFF</span> <span class="reason">— no login needed for public help</span></div>
+      <div class="example-toggle"><span class="val">Accepts External Intents: ON</span> <span class="reason">— other apps can link to FAQ</span></div>
+    </div>
+  </div>
+
+  <div class="gates-row" id="gatesRow"></div>
+
+  <div class="check-all-row">
+    <button class="btn" id="checkBtn">Verify Configuration</button>
+    <button class="hint-btn" id="hintBtn">Hint</button>
+    <div class="hint-text" id="hintText">Private screens should never be entry points for other apps.</div>
+  </div>
+  </div>
+</div>
+
+<script>
+const components = [
+  {
+    name: "ProfileActivity", desc: "Shows private user info",
+    correct: { exported: false, login: true, external: false }
+  },
+  {
+    name: "ShareActivity", desc: "Allows sharing text to other apps",
+    correct: { exported: true, login: false, external: true }
+  },
+  {
+    name: "SyncService", desc: "Background sync of non-sensitive settings",
+    correct: { exported: false, login: false, external: false }
+  }
+];
+
+const gatesRow = document.getElementById("gatesRow");
+const checkBtn = document.getElementById("checkBtn");
+const hintBtn = document.getElementById("hintBtn");
+const hintText = document.getElementById("hintText");
+const exampleCard = document.getElementById("exampleCard");
+
+const gateEls = [];
+
+components.forEach((c, i) => {
+  const card = document.createElement("div");
+  card.className = "gate-card";
+  card.innerHTML = `
+    <div class="gate-name">${c.name}</div>
+    <div class="gate-desc">${c.desc}</div>
+    <div class="toggle-row">
+      <span class="toggle-label">Exported</span>
+      <label class="toggle-switch"><input type="checkbox" data-gate="${i}" data-toggle="exported" tabindex="0"><span class="toggle-slider"></span></label>
+    </div>
+    <div class="toggle-row">
+      <span class="toggle-label">Requires Login</span>
+      <label class="toggle-switch"><input type="checkbox" data-gate="${i}" data-toggle="login" tabindex="0"><span class="toggle-slider"></span></label>
+    </div>
+    <div class="toggle-row">
+      <span class="toggle-label">Accepts External Intents</span>
+      <label class="toggle-switch"><input type="checkbox" data-gate="${i}" data-toggle="external" tabindex="0"><span class="toggle-slider"></span></label>
+    </div>
+    <div class="gate-feedback" id="gateFb-${i}"></div>
+  `;
+  gatesRow.appendChild(card);
+  gateEls.push(card);
+});
+
+checkBtn.addEventListener("click", () => {
+  let allCorrect = true;
+
+  components.forEach((c, i) => {
+    const card = gateEls[i];
+    const fb = document.getElementById(`gateFb-${i}`);
+    const exported = card.querySelector(`[data-toggle="exported"]`).checked;
+    const login = card.querySelector(`[data-toggle="login"]`).checked;
+    const external = card.querySelector(`[data-toggle="external"]`).checked;
+
+    const isCorrect = exported === c.correct.exported &&
+                      login === c.correct.login &&
+                      external === c.correct.external;
+
+    card.classList.remove("correct", "wrong");
+
+    if (isCorrect) {
+      card.classList.add("correct");
+      fb.innerHTML = '<span class="feedback-correct">Correct configuration!</span>';
+    } else {
+      card.classList.add("wrong");
+      allCorrect = false;
+      let hint = "";
+      if (c.name === "ProfileActivity") hint = "Private user data → keep internal, require login, no external intents.";
+      else if (c.name === "ShareActivity") hint = "Sharing is meant to interact externally → export it, accept external intents.";
+      else hint = "Internal maintenance service → no external access needed.";
+      fb.innerHTML = `<span class="feedback-incorrect">${hint}</span>`;
+    }
+  });
+
+  if (allCorrect) {
+    exampleCard.classList.add("collapsed");
+    checkBtn.disabled = true;
+    setTimeout(() => {
+      try { window.parent.postMessage({ type: "renjs-event", id: "security-gate-complete" }, "*"); } catch(e) {}
+    }, 1500);
+  }
+});
+
+hintBtn.addEventListener("click", () => hintText.classList.toggle("visible"));
+window.addEventListener("load", () => window.focus());
+</script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+positions:
+  OUTLEFT: #Outside of the screen, left side
+    x: '-1/6'
+    y: '1/1' #The y should be at the bottom of the screen
+  LEFT: 
+    x: '1/6'
+    y: '1/1'
+  LEFT_MIDDLE:
+    x: '1/6'
+    y: '1/2'
+  DEFAULT:
+    x: '1/2'
+    y: '1/1'
+  CENTER: 
+    x: '1/2'
+    y: '1/1'
+  CENTER_MIDDLE: 
+    x: '1/2'
+    y: '1/2'
+  RIGHT: 
+    x: '5/6'
+    y: '1/1'
+  RIGHT_MIDDLE: 
+    x: '5/6'
+    y: '1/2'
+  OUTRIGHT: #Outside of the screen, right side
+    x: '7/6'
+    y: '1/1'
+
+transitions:
+  defaults: # Default transition when showing/hiding
+    characters: FADE
+    backgrounds: FADE
+    cgs: FADE
+    music: FADE
+  say: CUT #How to change character expression in say action
+  # Transition to use when showing/hiding choices
+  visualChoices: FADE
+  textChoices: CUT
+  menus: FADE
+  # transitions can be skipped by the player by tapping
+  skippable: false
+
+# Fade transition time, in miliseconds
+fadetime : 750
+# Time in each action that waits (e.g. text and say) when skipping
+skiptime: 50
+# Time in each action that waits (e.g. text and say) when auto playing
+autotime: 150
+# If logChoices is true, previously chosen choices will be shown in a different color
+logChoices: false
+logText: false
+# Default waiting time for timeouts if not specified
+timeout: 5000
+# punctuation can add extra time when showing text in the message box, per special character
+punctuationMarks: [".",",","!","?",":","-"]
+# when a punctuation mark is shown, X extra puntuation wait times will be spent after adding the next character
+# the total amount of wait will be this value multiplied the text speed
+punctuationWait: 5
+
+precomputeBreakLines: true
+
+userPreferences:
+  textSpeed: 60
+  autoSpeed: 150
+  bgmv: 0.8
+  sfxv: 0.5
+  muted: false

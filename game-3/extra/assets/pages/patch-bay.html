@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="cybergame-common.css">
+<style>
+  html, body { background: transparent; overflow: hidden; }
+  .container { justify-content: center; align-items: center; }
+  .branded-panel {
+    background: rgba(6, 10, 20, 0.88);
+    border: 1px solid rgba(0, 212, 255, 0.45);
+    border-radius: 8px;
+    padding: 14px 24px;
+    box-shadow: 0 0 24px rgba(0,212,255,0.15);
+    display: flex; flex-direction: column; align-items: center;
+    gap: 10px; max-width: 1080px; width: 96%;
+  }
+  .title { font-size: 20px; color: #00d4ff; text-transform: uppercase; letter-spacing: 3px; }
+  .subtitle { font-size: 13px; color: rgba(224,230,240,0.65); text-align: center; }
+
+  .options { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 920px; }
+  .option {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 12px 14px; border-radius: 8px;
+    background: rgba(0,0,0,0.45); border: 1px solid rgba(0,212,255,0.25);
+    cursor: pointer; transition: all 0.2s ease;
+  }
+  .option:hover { border-color: #00d4ff; }
+  .option:focus-within { outline: 2px solid #00d4ff; outline-offset: 3px; }
+  .option.selected { background: rgba(0,212,255,0.1); border-color: #00d4ff; }
+  .option.locked { pointer-events: none; }
+  .option.right { border-color: #39ff14; background: rgba(57,255,20,0.08); }
+  .option.wrong { border-color: #ff3366; background: rgba(255,51,102,0.08); }
+
+  .checkbox {
+    width: 22px; height: 22px; flex-shrink: 0;
+    border: 1px solid rgba(0,212,255,0.5); border-radius: 4px;
+    background: rgba(0,212,255,0.05);
+    display: flex; align-items: center; justify-content: center;
+    color: transparent; font-weight: bold; font-size: 16px;
+  }
+  .option.selected .checkbox { background: #00d4ff; color: #06121e; }
+  .option.right .checkbox { background: #39ff14; color: #06121e; border-color: #39ff14; }
+
+  .option-letter {
+    font-family: 'Courier New', monospace; font-size: 13px; color: #00d4ff; flex-shrink: 0;
+  }
+  .option-text { flex: 1; font-size: 13px; color: #e0e6f0; line-height: 1.45; }
+
+  .feedback {
+    width: 100%; min-height: 30px;
+    padding: 8px 12px; border-radius: 6px;
+    font-size: 12px; line-height: 1.5; display: none;
+  }
+  .feedback.show { display: block; }
+  .feedback.correct { background: rgba(57,255,20,0.08); color: #39ff14; border: 1px solid rgba(57,255,20,0.3); }
+  .feedback.wrong { background: rgba(255,51,102,0.08); color: #ff3366; border: 1px solid rgba(255,51,102,0.3); }
+  .actions { display: flex; gap: 12px; }
+  .continue-btn { display: none; }
+  .continue-btn.visible { display: inline-block; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="branded-panel">
+    <div class="title">Secure-by-Default Patch Bay</div>
+    <div class="subtitle">Select ALL changes that directly reduce the risk of this incident recurring.</div>
+
+    <div class="options" id="options" role="group" aria-label="Patch options"></div>
+
+    <div class="feedback" id="feedback" role="status" aria-live="polite"></div>
+    <div class="actions">
+      <button class="btn btn-warning" id="approveBtn">Approve Patch</button>
+      <button class="btn btn-success continue-btn" id="continueBtn">Continue</button>
+    </div>
+  </div>
+</div>
+<script>
+const options = [
+  { letter: "A", text: "Keep ProfileActivity internal and require login checks before showing private data.", correct: true },
+  { letter: "B", text: "Log session tokens to help debugging.",
+    feedback: "Logging tokens recreates the leak you just spent three scenes containing. An attacker with log access now has a valid credential — the breach repeats." },
+  { letter: "C", text: "Redact or remove sensitive logs (tokens, emails, password context).", correct: true },
+  { letter: "D", text: "Request extra permissions 'just in case' future features need them.",
+    feedback: "This directly violates Least Privilege. Unused permissions expand the attack surface — if the app is ever compromised, those permissions become weapons." },
+  { letter: "E", text: "Use encrypted storage for any stored tokens.", correct: true },
+  { letter: "F", text: "Export all Activities for faster navigation.",
+    feedback: "This is how the Shadow App incident started. Exporting ProfileActivity gave a hostile app an open door to private user data. Performance convenience is never a justification for removing access controls." },
+  { letter: "G", text: "Implement a session validation check inside ProfileActivity to verify the user is authenticated before any private data is loaded.", correct: true }
+];
+
+const optionsEl = document.getElementById("options");
+const feedbackEl = document.getElementById("feedback");
+const approveBtn = document.getElementById("approveBtn");
+const continueBtn = document.getElementById("continueBtn");
+const selected = new Set();
+let approved = false;
+let done = false;
+
+options.forEach(o => {
+  const div = document.createElement("div");
+  div.className = "option";
+  div.setAttribute("role", "checkbox");
+  div.setAttribute("aria-checked", "false");
+  div.tabIndex = 0;
+  div.dataset.letter = o.letter;
+  div.innerHTML = `
+    <div class="checkbox" aria-hidden="true">✓</div>
+    <div class="option-letter">${o.letter})</div>
+    <div class="option-text">${o.text}</div>
+  `;
+  const toggle = () => {
+    if (approved) return;
+    if (selected.has(o.letter)) { selected.delete(o.letter); div.classList.remove("selected"); div.setAttribute("aria-checked", "false"); }
+    else { selected.add(o.letter); div.classList.add("selected"); div.setAttribute("aria-checked", "true"); }
+  };
+  div.addEventListener("click", toggle);
+  div.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); }});
+  optionsEl.appendChild(div);
+});
+
+approveBtn.addEventListener("click", () => {
+  if (approved) return;
+  // Validate: must include A, C, E, G and not include B, D, F
+  const wrongSelected = options.filter(o => !o.correct && selected.has(o.letter));
+  const missing = options.filter(o => o.correct && !selected.has(o.letter));
+
+  // mark UI states for transparency
+  options.forEach(o => {
+    const div = optionsEl.querySelector(`.option[data-letter="${o.letter}"]`);
+    div.classList.remove("right", "wrong");
+    if (o.correct && selected.has(o.letter)) div.classList.add("right");
+    if (!o.correct && selected.has(o.letter)) div.classList.add("wrong");
+  });
+
+  if (wrongSelected.length === 0 && missing.length === 0) {
+    approved = true;
+    options.forEach(o => optionsEl.querySelector(`.option[data-letter="${o.letter}"]`).classList.add("locked"));
+    feedbackEl.className = "feedback show correct";
+    feedbackEl.textContent = "Patch approved — secure defaults applied. Exposure closed, secrets protected, controls layered.";
+    approveBtn.disabled = true;
+    continueBtn.classList.add("visible");
+    continueBtn.focus();
+  } else {
+    let msg = "";
+    if (wrongSelected.length) {
+      msg += wrongSelected.map(o => `(${o.letter}) ${o.feedback}`).join(" ");
+    }
+    if (missing.length) {
+      if (msg) msg += " ";
+      msg += "Missing: " + missing.map(o => `(${o.letter})`).join(", ") + ". Choose secure defaults that reduce exposure of data and entry points.";
+    }
+    feedbackEl.className = "feedback show wrong";
+    feedbackEl.textContent = msg;
+  }
+});
+
+continueBtn.addEventListener("click", () => {
+  if (done) return; done = true;
+  try { window.parent.postMessage({ type: "renjs-event", id: "patch-bay-complete" }, "*"); } catch(e) {}
+});
+
+window.addEventListener("load", () => window.focus());
+</script>
+</body>
+</html>

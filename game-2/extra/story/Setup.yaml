@@ -1,0 +1,44 @@
+
+backgrounds:
+  bg_retrofitbay: assets/backgrounds/bg_retrofitbay.png
+  bg_pillars: assets/backgrounds/bg_pillars.png
+  bg_permissiondock: assets/backgrounds/bg_permissiondock.png
+  bg_datavault: assets/backgrounds/bg_datavault.png
+  bg_codescraps: assets/backgrounds/bg_codescraps.png
+  bg_logstream: assets/backgrounds/bg_logstream.png
+  bg_sanitizer: assets/backgrounds/bg_sanitizer.png
+  bg_corridor: assets/backgrounds/bg_corridor.png
+  bg_securitygate: assets/backgrounds/bg_securitygate.png
+  bg_scoreboard: assets/backgrounds/bg_scoreboard.png
+  bg_wrapup2: assets/backgrounds/bg_wrapup2.png
+
+characters:
+  ker:
+    displayName: Ker
+    speechColour: "#00d4ff"
+    looks:
+      normal: assets/characters/ker.png
+      thinking: assets/characters/ker_thinking.png
+      explaining: assets/characters/ker_explaining.png
+      celebrating: assets/characters/ker_celebrating.png
+      concerned: assets/characters/ker_concerned.png
+  android:
+    displayName: AN-DR 01d
+    speechColour: "#39ff14"
+    looks:
+      normal: assets/characters/android.png
+      online: assets/characters/android_online.png
+      alert: assets/characters/android_alert.png
+      scanning: assets/characters/android_scanning.png
+      secured: assets/characters/android_secured.png
+
+cgs:
+  icon_badge: assets/items/icon_badge.png
+  icon_trophy: assets/items/icon_trophy.png
+
+music:
+
+sfx:
+
+extra:
+  spritesheets: []

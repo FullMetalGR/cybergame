@@ -1,0 +1,5 @@
+module:
+  name: Shadow App Incident - Android Attack Simulation
+  id: com.ctflib.cybergame.story-3-shadow-app
+  version: v1
+  organisation: com.ctflib.cybergame

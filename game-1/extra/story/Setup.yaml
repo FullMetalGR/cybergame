@@ -1,0 +1,69 @@
+
+backgrounds:
+  bg_wrecksite: assets/backgrounds/bg_wrecksite.png
+  bg_blueprint: assets/backgrounds/bg_blueprint.png
+  bg_tower: assets/backgrounds/bg_tower.png
+  bg_capsule: assets/backgrounds/bg_capsule.png
+  bg_commstower: assets/backgrounds/bg_commstower.png
+  bg_console: assets/backgrounds/bg_console.png
+  bg_scanner: assets/backgrounds/bg_scanner.png
+  bg_lifecycle: assets/backgrounds/bg_lifecycle.png
+  bg_missionboard: assets/backgrounds/bg_missionboard.png
+  bg_wrapup: assets/backgrounds/bg_wrapup.png
+
+characters:
+  ker:
+    displayName: Ker
+    speechColour: "#00d4ff"
+    looks:
+      normal: assets/characters/ker.png
+      crouching: assets/characters/ker_crouching.png
+      thinking: assets/characters/ker_thinking.png
+      explaining: assets/characters/ker_explaining.png
+      celebrating: assets/characters/ker_celebrating.png
+  android:
+    displayName: AN-DR 01d
+    speechColour: "#39ff14"
+    looks:
+      normal: assets/characters/android.png
+      broken: assets/characters/android_broken.png
+      booting: assets/characters/android_booting.png
+      partial: assets/characters/android_partial.png
+      online: assets/characters/android_online.png
+
+cgs:
+  icon_power_node: assets/items/icon_power_node.png
+  icon_continue: assets/items/icon_continue.png
+  icon_info: assets/items/icon_info.png
+  icon_diagnostics: assets/items/icon_diagnostics.png
+  icon_arrow_blue: assets/items/icon_arrow_blue.png
+  icon_layer_block: assets/items/icon_layer_block.png
+  icon_runtime: assets/items/icon_runtime.png
+  icon_services: assets/items/icon_services.png
+  icon_security: assets/items/icon_security.png
+  icon_activity: assets/items/icon_activity.png
+  icon_service: assets/items/icon_service.png
+  icon_broadcast: assets/items/icon_broadcast.png
+  icon_provider: assets/items/icon_provider.png
+  icon_manifest: assets/items/icon_manifest.png
+  icon_target: assets/items/icon_target.png
+  icon_broadcast_signal: assets/items/icon_broadcast_signal.png
+  icon_route_arrow: assets/items/icon_route_arrow.png
+  icon_correct: assets/items/icon_correct.png
+  icon_incorrect: assets/items/icon_incorrect.png
+  icon_hint: assets/items/icon_hint.png
+  icon_reset: assets/items/icon_reset.png
+  icon_drag: assets/items/icon_drag.png
+  icon_star: assets/items/icon_star.png
+  icon_badge: assets/items/icon_badge.png
+  icon_trophy: assets/items/icon_trophy.png
+  icon_xp: assets/items/icon_xp.png
+  icon_next: assets/items/icon_next.png
+  title: assets/items/title.png
+
+music:
+
+sfx:
+
+extra:
+  spritesheets: []

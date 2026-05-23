@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="cybergame-common.css">
+<style>
+  html, body { background: transparent; overflow: hidden; }
+  .container { justify-content: center; align-items: center; }
+  .branded-panel {
+    background: rgba(6, 10, 20, 0.85);
+    border: 1px solid rgba(0, 212, 255, 0.5);
+    border-radius: 8px;
+    padding: 20px 28px 18px;
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.15), inset 0 0 30px rgba(0, 212, 255, 0.03);
+    display: flex; flex-direction: column; align-items: center;
+    gap: 12px; max-width: 780px; width: 96%;
+  }
+  .title { font-size: 20px; color: #00d4ff; text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 0 10px rgba(0, 212, 255, 0.5); margin-bottom: 6px; }
+  .subtitle { font-size: 13px; color: rgba(0, 212, 255, 0.6); letter-spacing: 1px; }
+
+  /* ── Tab bar ── */
+  .tabs { display: flex; gap: 8px; width: 100%; justify-content: center; }
+  .tab {
+    flex: 1; max-width: 160px; display: flex; flex-direction: column;
+    align-items: center; gap: 6px; padding: 12px 8px;
+    border: 1px solid rgba(0,212,255,0.2); border-radius: 6px;
+    background: rgba(0,212,255,0.03); cursor: pointer;
+    transition: all 0.3s ease; position: relative;
+  }
+  .tab:hover { border-color: rgba(0,212,255,0.5); background: rgba(0,212,255,0.06); }
+  .tab.active {
+    border-color: #00d4ff; background: rgba(0,212,255,0.1);
+    box-shadow: 0 0 12px rgba(0,212,255,0.2);
+  }
+  .tab.active::after {
+    content: ""; position: absolute; bottom: -7px; left: 50%; transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 7px solid transparent; border-right: 7px solid transparent;
+    border-top: 7px solid #00d4ff;
+  }
+  .tab.explored { border-color: rgba(57,255,20,0.4); }
+  .tab.explored .tab-name { color: #39ff14; }
+  .tab.explored .tab-icon svg .icon-stroke { stroke: #39ff14; }
+  .tab.explored .tab-icon svg .icon-fill { fill: rgba(57,255,20,0.15); }
+  .tab.explored .tab-icon svg { filter: drop-shadow(0 0 4px rgba(57,255,20,0.6)); }
+  .tab.explored.active { border-color: #39ff14; background: rgba(57,255,20,0.08); box-shadow: 0 0 12px rgba(57,255,20,0.2); }
+  .tab.explored.active::after { border-top-color: #39ff14; }
+
+  .tab-icon { width: 36px; height: 36px; }
+  .tab-icon svg { width: 100%; height: 100%; filter: drop-shadow(0 0 4px rgba(0,212,255,0.5)); }
+  .tab-icon svg .icon-stroke { stroke: #00d4ff; fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .tab-icon svg .icon-fill { fill: rgba(0,212,255,0.1); }
+  .tab:hover .tab-icon svg { filter: drop-shadow(0 0 8px rgba(0,212,255,0.7)); }
+
+  .tab-name { font-size: 10px; color: #00d4ff; text-transform: uppercase; letter-spacing: 1px; font-weight: bold; text-align: center; line-height: 1.3; }
+
+  /* ── Content area ── */
+  .content-area {
+    width: 100%; min-height: 190px;
+    border: 1px solid rgba(0,212,255,0.15); border-radius: 6px;
+    background: rgba(0,0,0,0.2); padding: 18px 22px;
+  }
+
+  .tab-content { display: none; animation: contentFade 0.35s ease-out; }
+  .tab-content.visible { display: block; }
+
+  @keyframes contentFade {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .content-placeholder {
+    text-align: center; color: rgba(224,230,240,0.3); font-size: 14px; padding: 50px 0;
+  }
+
+  .lists-row { display: flex; gap: 20px; margin-top: 6px; }
+  .list-col { flex: 1; }
+
+  .section-label {
+    font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+  .section-label.safe { color: #39ff14; }
+  .section-label.unsafe { color: #ff3366; }
+
+  .item-list { list-style: none; }
+  .item-list li {
+    padding: 5px 0; font-size: 13px; line-height: 1.4;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .item-list li::before { margin-right: 8px; font-size: 11px; }
+  .item-list.safe li { color: rgba(57,255,20,0.85); }
+  .item-list.safe li::before { content: "\2713"; color: #39ff14; }
+  .item-list.unsafe li { color: rgba(255,51,102,0.85); }
+  .item-list.unsafe li::before { content: "\2717"; color: #ff3366; }
+
+  /* Hardcoded warning box */
+  .warning-box {
+    margin-top: 12px; padding: 10px 14px; border-radius: 4px;
+    background: rgba(255,51,102,0.06); border: 1px solid rgba(255,51,102,0.2);
+  }
+  .warning-title { color: #ff3366; font-size: 13px; font-weight: bold; }
+  .warning-detail { color: #ff9999; font-size: 12px; line-height: 1.5; margin-top: 6px; }
+
+  /* ── Bottom bar ── */
+  .bottom-bar { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .progress-dots { display: flex; gap: 6px; }
+  .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    border: 2px solid rgba(0,212,255,0.3); transition: all 0.3s;
+  }
+  .dot.done { border-color: #39ff14; background: rgba(57,255,20,0.4); }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="branded-panel">
+    <div class="title">Data Vault</div>
+    <div class="subtitle">Select each storage type to learn what's safe and unsafe</div>
+
+    <div class="tabs" id="tabs">
+      <!-- SharedPreferences -->
+      <div class="tab" data-idx="0" tabindex="0" role="tab">
+        <div class="tab-icon">
+          <svg viewBox="0 0 36 36">
+            <rect class="icon-fill" x="6" y="5" width="24" height="26" rx="2"/>
+            <rect class="icon-stroke" x="6" y="5" width="24" height="26" rx="2"/>
+            <line class="icon-stroke" x1="11" y1="12" x2="25" y2="12" opacity="0.5"/>
+            <line class="icon-stroke" x1="11" y1="17" x2="25" y2="17" opacity="0.5"/>
+            <line class="icon-stroke" x1="11" y1="22" x2="20" y2="22" opacity="0.3"/>
+            <circle cx="14" cy="12" r="1.5" style="fill:#00d4ff;opacity:0.6"/>
+            <circle cx="14" cy="17" r="1.5" style="fill:#00d4ff;opacity:0.6"/>
+          </svg>
+        </div>
+        <div class="tab-name">Shared Prefs</div>
+      </div>
+
+      <!-- Internal Files -->
+      <div class="tab" data-idx="1" tabindex="0" role="tab">
+        <div class="tab-icon">
+          <svg viewBox="0 0 36 36">
+            <path class="icon-fill" d="M6 10 L16 10 L19 6 L30 6 L30 30 L6 30 Z"/>
+            <path class="icon-stroke" d="M6 10 L16 10 L19 6 L30 6 L30 30 L6 30 Z"/>
+            <line class="icon-stroke" x1="12" y1="17" x2="24" y2="17" opacity="0.4"/>
+            <line class="icon-stroke" x1="12" y1="21" x2="24" y2="21" opacity="0.4"/>
+            <line class="icon-stroke" x1="12" y1="25" x2="18" y2="25" opacity="0.3"/>
+          </svg>
+        </div>
+        <div class="tab-name">Internal Files</div>
+      </div>
+
+      <!-- SQLite Database -->
+      <div class="tab" data-idx="2" tabindex="0" role="tab">
+        <div class="tab-icon">
+          <svg viewBox="0 0 36 36">
+            <ellipse class="icon-fill" cx="18" cy="10" rx="13" ry="5"/>
+            <ellipse class="icon-stroke" cx="18" cy="10" rx="13" ry="5"/>
+            <path class="icon-stroke" d="M5 10 V26 C5 29 11 31 18 31 C25 31 31 29 31 26 V10"/>
+            <ellipse class="icon-stroke" cx="18" cy="18" rx="13" ry="5" opacity="0.3"/>
+            <ellipse class="icon-stroke" cx="18" cy="26" rx="13" ry="5" opacity="0.3"/>
+          </svg>
+        </div>
+        <div class="tab-name">SQLite DB</div>
+      </div>
+
+      <!-- Encrypted Storage -->
+      <div class="tab" data-idx="3" tabindex="0" role="tab">
+        <div class="tab-icon">
+          <svg viewBox="0 0 36 36">
+            <rect class="icon-fill" x="7" y="15" width="22" height="16" rx="3"/>
+            <rect class="icon-stroke" x="7" y="15" width="22" height="16" rx="3"/>
+            <path class="icon-stroke" d="M12 15 V11 C12 7 14.7 4 18 4 C21.3 4 24 7 24 11 V15"/>
+            <circle class="icon-stroke" cx="18" cy="23" r="2.5"/>
+            <line class="icon-stroke" x1="18" y1="25.5" x2="18" y2="28"/>
+            <circle cx="11" cy="8" r="1" style="fill:#00d4ff;opacity:0.4"/>
+            <circle cx="25" cy="8" r="1" style="fill:#00d4ff;opacity:0.4"/>
+            <circle cx="14" cy="5" r="0.7" style="fill:#00d4ff;opacity:0.3"/>
+          </svg>
+        </div>
+        <div class="tab-name">Encrypted</div>
+      </div>
+    </div>
+
+    <!-- Content area -->
+    <div class="content-area" id="contentArea">
+      <div class="content-placeholder" id="placeholder">Select a storage type above to explore</div>
+    </div>
+
+    <div class="bottom-bar">
+      <div class="progress-dots">
+        <div class="dot" data-idx="0"></div>
+        <div class="dot" data-idx="1"></div>
+        <div class="dot" data-idx="2"></div>
+        <div class="dot" data-idx="3"></div>
+      </div>
+      <button class="btn btn-success continue-btn" id="continueBtn" style="display:none;">Continue</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const drawers = [
+  {
+    name: "SharedPreferences",
+    safe: ["Non-sensitive UI settings (theme, language)", "Feature flags (boolean toggles)", "App configuration (display density, sort order)"],
+    unsafe: ["Passwords", "Auth tokens", "API keys", "Personal identifiers (email, phone)"],
+    warning: null
+  },
+  {
+    name: "Internal Files",
+    safe: ["Cached non-sensitive data", "Temp files for UI rendering", "Downloaded media thumbnails"],
+    unsafe: ["Unencrypted credentials", "Private documents without encryption", "Exported files with sensitive content"],
+    warning: null
+  },
+  {
+    name: "SQLite Database",
+    safe: ["App state data", "Non-sensitive user records", "Cached search results"],
+    unsafe: ["Raw passwords in tables", "Unencrypted PII (emails, phones)", "Session tokens stored as plain text"],
+    warning: null
+  },
+  {
+    name: "Encrypted Storage",
+    safe: ["Auth tokens (EncryptedSharedPreferences)", "Session keys", "Sensitive user data", "API credentials"],
+    unsafe: ["Nothing — this is the recommended approach for secrets"],
+    warning: {
+      title: "Why not just encrypt everything?",
+      detail: "Encryption adds overhead. Non-sensitive data (theme, language) doesn't need it. Reserve encrypted storage for secrets and PII — it keeps your code simpler and performance better."
+    }
+  }
+];
+
+const tabs = document.querySelectorAll(".tab");
+const contentArea = document.getElementById("contentArea");
+const placeholder = document.getElementById("placeholder");
+const dots = document.querySelectorAll(".dot");
+const continueBtn = document.getElementById("continueBtn");
+const explored = new Set();
+
+function selectTab(idx) {
+  tabs.forEach(t => t.classList.remove("active"));
+  tabs[idx].classList.add("active");
+
+  if (!explored.has(idx)) {
+    explored.add(idx);
+    tabs[idx].classList.add("explored");
+    dots[idx].classList.add("done");
+    if (explored.size === 4) {
+      setTimeout(() => { continueBtn.style.display = "inline-block"; continueBtn.classList.add("fade-in"); }, 400);
+    }
+  }
+
+  const d = drawers[idx];
+  placeholder.style.display = "none";
+  const old = contentArea.querySelector(".tab-content");
+  if (old) old.remove();
+
+  const safeLi = d.safe.map(s => `<li>${s}</li>`).join("");
+  const unsafeLi = d.unsafe.map(u => `<li>${u}</li>`).join("");
+
+  let warningHtml = "";
+  if (d.warning) {
+    warningHtml = `
+      <div class="warning-box">
+        <div class="warning-title">${d.warning.title}</div>
+        <div class="warning-detail">${d.warning.detail}</div>
+      </div>`;
+  }
+
+  const hardcodedHtml = idx < 3 ? `
+    <div class="warning-box">
+      <div class="warning-title">Hardcoded secrets risk</div>
+      <div class="warning-detail">Attackers can decompile APK files and find hardcoded API keys, passwords, or tokens embedded in source code. Tools like jadx or apktool make this trivial. Never embed secrets directly in your app.</div>
+    </div>` : "";
+
+  const div = document.createElement("div");
+  div.className = "tab-content visible";
+  div.innerHTML = `
+    <div class="lists-row">
+      <div class="list-col">
+        <div class="section-label safe">Safe to store</div>
+        <ul class="item-list safe">${safeLi}</ul>
+      </div>
+      <div class="list-col">
+        <div class="section-label unsafe">Unsafe to store</div>
+        <ul class="item-list unsafe">${unsafeLi}</ul>
+      </div>
+    </div>
+    ${warningHtml}
+    ${hardcodedHtml}
+  `;
+
+  contentArea.appendChild(div);
+}
+
+tabs.forEach((tab, i) => {
+  tab.addEventListener("click", () => selectTab(i));
+  tab.addEventListener("keydown", e => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectTab(i); }
+    if (e.key === "ArrowRight" && i < 3) { tabs[i+1].focus(); selectTab(i+1); }
+    if (e.key === "ArrowLeft" && i > 0) { tabs[i-1].focus(); selectTab(i-1); }
+  });
+});
+
+continueBtn.addEventListener("click", () => {
+  try { window.parent.postMessage({ type: "renjs-event", id: "storage-vault-complete" }, "*"); } catch(e) {}
+});
+
+window.addEventListener("load", () => window.focus());
+</script>
+</body>
+</html>

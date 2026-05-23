@@ -1,0 +1,20 @@
+
+backgrounds:
+  #custom_bg_slide_1: assets/backgrounds/custom-bg-slide-1.png
+
+characters:
+  #player:
+  #  displayName: Player
+  #  speechColour: "#6e9fce"
+  #  looks:
+  #    normal: assets/characters/male_1.png
+
+cgs:
+  #phone_1: assets/items/phone_1.png
+
+music:
+
+sfx:
+
+extra:
+  spritesheets: []

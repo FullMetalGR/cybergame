@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="cybergame-common.css">
+<style>
+  html, body { background: transparent; overflow: hidden; }
+  .container { justify-content: center; align-items: center; }
+  .branded-panel {
+    background: rgba(6, 10, 20, 0.85);
+    border: 1px solid rgba(0, 212, 255, 0.5);
+    border-radius: 8px;
+    padding: 30px 40px;
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.15), inset 0 0 30px rgba(0, 212, 255, 0.03);
+    display: flex; flex-direction: column; align-items: center;
+    gap: 20px; max-width: 580px; width: 95%;
+  }
+  .shield {
+    width: 120px; height: 140px;
+    position: relative; cursor: pointer;
+    transition: all 0.4s ease;
+  }
+  .shield svg { width: 100%; height: 100%; filter: drop-shadow(0 0 15px rgba(0,212,255,0.5)); }
+  .shield:hover svg { filter: drop-shadow(0 0 25px rgba(0,212,255,0.8)); }
+  .shield.activated svg { filter: drop-shadow(0 0 30px rgba(57,255,20,0.8)); }
+  .shield.activated svg path { fill: rgba(57,255,20,0.2); stroke: #39ff14; }
+
+  .title { font-size: 22px; color: #00d4ff; text-transform: uppercase; letter-spacing: 3px; }
+  .subtitle { font-size: 14px; color: rgba(224,230,240,0.6); margin-top: 4px; }
+
+  .progress-wrap {
+    display: none; flex-direction: column; align-items: center; gap: 8px;
+    margin-top: 16px; width: 400px;
+  }
+  .progress-wrap.visible { display: flex; }
+  .progress-bar {
+    width: 100%; height: 14px;
+    background: rgba(0,212,255,0.08);
+    border: 1px solid rgba(0,212,255,0.4);
+    border-radius: 7px; overflow: hidden;
+    box-shadow: inset 0 0 6px rgba(0,212,255,0.15);
+  }
+  .progress-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, #00d4ff, #39ff14);
+    box-shadow: 0 0 10px rgba(0,212,255,0.5);
+    transition: width 0.15s linear;
+  }
+  .progress-percent {
+    font-family: 'Courier New', monospace;
+    font-size: 14px; color: #00d4ff; letter-spacing: 1px;
+  }
+
+  .status-text {
+    font-size: 16px; color: #ffd700;
+    margin-top: 16px; opacity: 0;
+    transition: opacity 0.5s ease;
+  }
+  .status-text.visible { opacity: 1; }
+
+  .continue-btn {
+    margin-top: 20px; opacity: 0; pointer-events: none;
+    transition: opacity 0.5s ease;
+  }
+  .continue-btn.visible { opacity: 1; pointer-events: auto; }
+</style>
+</head>
+<body>
+<div class="container" id="main">
+  <div class="branded-panel">
+  <div class="title">Defence Console</div>
+  <div class="subtitle">Click the shield to initiate security scan</div>
+
+  <div class="shield" id="shield" tabindex="0" role="button" aria-label="Click to start security scan">
+    <svg viewBox="0 0 100 120">
+      <path d="M50 5 L95 25 L95 65 Q95 100 50 115 Q5 100 5 65 L5 25 Z"
+            fill="rgba(0,212,255,0.1)" stroke="#00d4ff" stroke-width="2"/>
+    </svg>
+  </div>
+
+  <div class="progress-wrap" id="progressWrap">
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="progress-percent" id="progressPercent">0%</div>
+  </div>
+
+  <div class="status-text" id="status">SCAN COMPLETE — SECURITY POSTURE: UPGRADEABLE</div>
+
+  <button class="btn btn-success continue-btn" id="continueBtn">Continue</button>
+  </div>
+</div>
+
+<script>
+const shield = document.getElementById("shield");
+const progressWrap = document.getElementById("progressWrap");
+const progressFill = document.getElementById("progressFill");
+const progressPercent = document.getElementById("progressPercent");
+const status = document.getElementById("status");
+const continueBtn = document.getElementById("continueBtn");
+let scanned = false;
+let ready = false;
+
+function startScan() {
+  if (scanned) return;
+  scanned = true;
+  shield.classList.add("activated");
+  progressWrap.classList.add("visible");
+
+  let pct = 0;
+  const durationMs = 3000;
+  const stepMs = 60;
+  const increment = 100 / (durationMs / stepMs);
+
+  const interval = setInterval(() => {
+    pct += increment;
+    if (pct >= 100) {
+      pct = 100;
+      clearInterval(interval);
+      onScanDone();
+    }
+    progressFill.style.width = pct + "%";
+    progressPercent.textContent = Math.floor(pct) + "%";
+  }, stepMs);
+}
+
+function onScanDone() {
+  setTimeout(() => status.classList.add("visible"), 300);
+  setTimeout(() => {
+    continueBtn.classList.add("visible");
+    ready = true;
+    continueBtn.focus();
+  }, 900);
+}
+
+function complete() {
+  if (!ready) return;
+  ready = false;
+  try {
+    window.parent.postMessage({ type: "renjs-event", id: "defence-console-complete" }, "*");
+  } catch(e) {}
+}
+
+shield.addEventListener("click", startScan);
+shield.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); startScan(); }});
+
+continueBtn.addEventListener("click", complete);
+
+window.addEventListener("keydown", e => {
+  if (e.key === " ") {
+    e.preventDefault();
+    if (!scanned) startScan();
+    else if (ready) complete();
+  }
+});
+
+window.addEventListener("load", () => { window.focus(); shield.focus(); });
+</script>
+</body>
+</html>

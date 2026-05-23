@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="cybergame-common.css">
+<style>
+  html, body { background: transparent; overflow: hidden; }
+  .container { justify-content: center; align-items: center; }
+  .branded-panel {
+    background: rgba(6, 10, 20, 0.9);
+    border: 1px solid rgba(57, 255, 20, 0.4);
+    border-radius: 8px;
+    padding: 14px 22px;
+    box-shadow: 0 0 24px rgba(57,255,20,0.15);
+    display: flex; flex-direction: column; align-items: center;
+    gap: 10px; max-width: 860px; width: 96%;
+  }
+  .title { font-size: 18px; color: #39ff14; text-transform: uppercase; letter-spacing: 3px; }
+
+  .phase { width: 100%; padding: 8px 0; display: none; }
+  .phase.active { display: block; }
+  .phase h3 {
+    margin: 0 0 6px 0; font-size: 13px; color: #00d4ff;
+    text-transform: uppercase; letter-spacing: 1px;
+  }
+
+  /* Fill-in */
+  .fill-prompt { font-size: 14px; color: #e0e6f0; line-height: 1.6; margin-bottom: 10px; }
+  .fill-input {
+    background: rgba(0,0,0,0.4); border: 1px solid rgba(0,212,255,0.4);
+    color: #00d4ff; padding: 4px 8px; border-radius: 4px;
+    font-family: 'Courier New', monospace; font-size: 13px;
+    width: 160px;
+  }
+  .fill-input:focus { outline: 2px solid #00d4ff; outline-offset: 2px; }
+
+  /* MCQ */
+  .mcq-prompt { font-size: 14px; color: #e0e6f0; margin-bottom: 8px; }
+  .mcq-option {
+    display: block; width: 100%; text-align: left;
+    padding: 8px 12px; margin-bottom: 6px;
+    background: rgba(0,0,0,0.4); border: 1px solid rgba(0,212,255,0.3);
+    border-radius: 6px; color: #e0e6f0; cursor: pointer;
+    font-size: 13px;
+  }
+  .mcq-option:hover { background: rgba(0,212,255,0.08); border-color: #00d4ff; }
+  .mcq-option.correct { background: rgba(57,255,20,0.08); border-color: #39ff14; color: #39ff14; }
+  .mcq-option.wrong { background: rgba(255,51,102,0.08); border-color: #ff3366; color: #ff3366; }
+
+  /* DnD */
+  .drag-work { display: flex; gap: 10px; }
+  .drag-pool, .drag-zones { flex: 1; }
+  .drag-pool { min-height: 140px; padding: 8px; border-radius: 6px; background: rgba(0,0,0,0.3); border: 1px dashed rgba(0,212,255,0.35); }
+  .drag-card {
+    padding: 6px 10px; border-radius: 6px; margin: 4px 0;
+    background: rgba(0,212,255,0.07); border: 1px solid rgba(0,212,255,0.4);
+    color: #e0e6f0; font-size: 12px; cursor: grab;
+  }
+  .drag-card:focus { outline: 2px solid #00d4ff; }
+  .drag-zone {
+    padding: 6px; border-radius: 6px; margin-bottom: 6px;
+    background: rgba(0,0,0,0.3); border: 1px dashed rgba(0,212,255,0.35);
+    min-height: 50px;
+  }
+  .drag-zone.over { background: rgba(0,212,255,0.1); border-color: #00d4ff; }
+  .drag-zone-label { font-size: 11px; color: #00d4ff; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+
+  .feedback {
+    width: 100%; padding: 8px 12px; border-radius: 6px;
+    font-size: 12px; line-height: 1.5; display: none;
+  }
+  .feedback.show { display: block; }
+  .feedback.correct { background: rgba(57,255,20,0.08); color: #39ff14; border: 1px solid rgba(57,255,20,0.3); }
+  .feedback.wrong { background: rgba(255,51,102,0.08); color: #ff3366; border: 1px solid rgba(255,51,102,0.3); }
+  .next-btn { display: none; }
+  .next-btn.visible { display: inline-block; }
+  .actions { display: flex; gap: 10px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="branded-panel">
+    <div class="title">After-Action Report</div>
+
+    <!-- Phase 1: Fill-in -->
+    <div class="phase active" id="phase1">
+      <h3>1 / 3 — Fill in the gaps</h3>
+      <div class="fill-prompt">
+        Intent spoofing is dangerous when a component is
+        <input class="fill-input" id="blank1" aria-label="First blank">
+        and lacks
+        <input class="fill-input" id="blank2" aria-label="Second blank">
+        checks.
+      </div>
+      <div class="actions">
+        <button class="btn btn-warning" id="checkFill">Check</button>
+        <button class="btn btn-success next-btn" id="nextFill">Next</button>
+      </div>
+    </div>
+
+    <!-- Phase 2: MCQ -->
+    <div class="phase" id="phase2">
+      <h3>2 / 3 — Multiple choice</h3>
+      <div class="mcq-prompt">Best first response when a private component is triggered externally?</div>
+      <div id="mcqOptions"></div>
+    </div>
+
+    <!-- Phase 3: DnD phase mapping -->
+    <div class="phase" id="phase3">
+      <h3>3 / 3 — Map actions to phases</h3>
+      <div class="drag-work">
+        <div class="drag-pool" id="dragPool">
+          <div class="drag-zone-label">Action Cards</div>
+        </div>
+        <div class="drag-zones" id="dragZones"></div>
+      </div>
+      <div class="actions" style="margin-top:8px">
+        <button class="btn btn-warning" id="checkDrag">Check Mapping</button>
+        <button class="btn btn-success next-btn" id="finishBtn">Finish Revision</button>
+      </div>
+    </div>
+
+    <div class="feedback" id="feedback" role="status" aria-live="polite"></div>
+  </div>
+</div>
+<script>
+const feedback = document.getElementById("feedback");
+function showFeedback(text, kind) {
+  feedback.className = "feedback show " + kind;
+  feedback.textContent = text;
+}
+function hideFeedback() { feedback.classList.remove("show"); }
+function showPhase(n) {
+  document.querySelectorAll(".phase").forEach(p => p.classList.remove("active"));
+  document.getElementById("phase" + n).classList.add("active");
+  hideFeedback();
+}
+
+/* -------------------- PHASE 1: Fill-in -------------------- */
+const checkFill = document.getElementById("checkFill");
+const nextFill = document.getElementById("nextFill");
+const blank1 = document.getElementById("blank1");
+const blank2 = document.getElementById("blank2");
+
+checkFill.addEventListener("click", () => {
+  const a = blank1.value.trim().toLowerCase();
+  const b = blank2.value.trim().toLowerCase();
+  const ok1 = a === "exported";
+  const ok2 = b === "authentication" || b === "auth";
+  if (ok1 && ok2) {
+    showFeedback("Exported makes a component reachable by other apps. Without authentication checks, any app — including a malicious one — can trigger it freely. Together, these two gaps created the Shadow App incident.", "correct");
+    blank1.disabled = true; blank2.disabled = true;
+    nextFill.classList.add("visible");
+    nextFill.focus();
+  } else {
+    showFeedback("Hint: exported = reachable by other apps. Authentication checks = verify the caller has permission before executing.", "wrong");
+  }
+});
+nextFill.addEventListener("click", () => {
+  buildMCQ();
+  showPhase(2);
+});
+
+/* -------------------- PHASE 2: MCQ -------------------- */
+const mcqOptions = [
+  { id: "A", text: "Ignore and monitor for a week", correct: false,
+    explain: "Every second you delay containment, the attacker collects more data or gains deeper access." },
+  { id: "B", text: "Contain immediately by closing exposure and validating access", correct: true,
+    explain: "Correct. Close the door first — then investigate." },
+  { id: "C", text: "Add more permissions to investigate", correct: false,
+    explain: "Adding permissions makes things worse by expanding the attack surface." }
+];
+const mcqEl = document.getElementById("mcqOptions");
+let mcqDone = false;
+
+function buildMCQ() {
+  mcqEl.innerHTML = "";
+  mcqOptions.forEach(o => {
+    const btn = document.createElement("button");
+    btn.className = "mcq-option";
+    btn.textContent = `${o.id}) ${o.text}`;
+    btn.addEventListener("click", () => {
+      if (mcqDone) return;
+      if (o.correct) {
+        btn.classList.add("correct");
+        mcqDone = true;
+        showFeedback(o.explain, "correct");
+        setTimeout(() => { buildDrag(); showPhase(3); }, 1400);
+      } else {
+        btn.classList.add("wrong");
+        showFeedback(o.explain, "wrong");
+        setTimeout(() => btn.classList.remove("wrong"), 1400);
+      }
+    });
+    mcqEl.appendChild(btn);
+  });
+}
+
+/* -------------------- PHASE 3: DnD phase mapping -------------------- */
+const dragCards = [
+  { id: "card-detect", text: "Prioritize alert", phase: "Detect" },
+  { id: "card-contain", text: "Lockdown exported component", phase: "Contain" },
+  { id: "card-recover", text: "Revoke tokens", phase: "Recover" }
+];
+const phaseSlots = ["Detect", "Contain", "Recover"];
+const dragPool = document.getElementById("dragPool");
+const dragZones = document.getElementById("dragZones");
+const checkDragBtn = document.getElementById("checkDrag");
+const finishBtn = document.getElementById("finishBtn");
+const dragPlacement = {}; // cardId -> phase
+
+function buildDrag() {
+  dragPool.innerHTML = '<div class="drag-zone-label">Action Cards</div>';
+  dragZones.innerHTML = "";
+
+  // shuffle cards
+  [...dragCards].sort(() => Math.random() - 0.5).forEach(c => {
+    const div = document.createElement("div");
+    div.className = "drag-card";
+    div.draggable = true;
+    div.tabIndex = 0;
+    div.dataset.id = c.id;
+    div.setAttribute("role", "button");
+    div.setAttribute("aria-label", `Action: ${c.text}`);
+    div.textContent = c.text;
+    div.addEventListener("dragstart", e => e.dataTransfer.setData("text/plain", c.id));
+    dragPool.appendChild(div);
+  });
+
+  phaseSlots.forEach(p => {
+    const zone = document.createElement("div");
+    zone.className = "drag-zone";
+    zone.dataset.phase = p;
+    zone.innerHTML = `<div class="drag-zone-label">${p}</div>`;
+    zone.addEventListener("dragover", e => { e.preventDefault(); zone.classList.add("over"); });
+    zone.addEventListener("dragleave", () => zone.classList.remove("over"));
+    zone.addEventListener("drop", e => {
+      e.preventDefault();
+      zone.classList.remove("over");
+      const id = e.dataTransfer.getData("text/plain");
+      const card = dragCards.find(x => x.id === id);
+      if (!card) return;
+      // remove from previous
+      document.querySelectorAll(`.drag-card[data-id="${id}"]`).forEach(el => el.remove());
+      // append fresh
+      const div = document.createElement("div");
+      div.className = "drag-card";
+      div.draggable = true;
+      div.tabIndex = 0;
+      div.dataset.id = card.id;
+      div.textContent = card.text;
+      div.addEventListener("dragstart", e2 => e2.dataTransfer.setData("text/plain", card.id));
+      zone.appendChild(div);
+      dragPlacement[id] = p;
+    });
+    dragZones.appendChild(zone);
+  });
+}
+
+checkDragBtn.addEventListener("click", () => {
+  if (Object.keys(dragPlacement).length < 3) {
+    showFeedback("Place all three cards before checking.", "wrong");
+    return;
+  }
+  let correct = 0;
+  dragCards.forEach(c => { if (dragPlacement[c.id] === c.phase) correct++; });
+  if (correct === 3) {
+    showFeedback("Prioritizing the alert is how you Detect; locking down the exported component is Contain; revoking tokens is Recover. The order matters — you can't recover from something you haven't yet contained.", "correct");
+    finishBtn.classList.add("visible");
+    finishBtn.focus();
+  } else {
+    showFeedback("Some cards are in the wrong phase. Hint: Detect = identify the threat, Contain = stop active threat, Recover = restore trust after containment.", "wrong");
+  }
+});
+
+let done = false;
+finishBtn.addEventListener("click", () => {
+  if (done) return; done = true;
+  try { window.parent.postMessage({ type: "renjs-event", id: "after-action-complete" }, "*"); } catch(e) {}
+});
+
+window.addEventListener("load", () => { window.focus(); blank1.focus(); });
+</script>
+</body>
+</html>
